@@ -2,7 +2,7 @@ import SessionHelper from '@/utils/session';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-class UserService {
+class CitiesService {
     static async getUsers(page = 1, limit = 10) {
         try {
             const response = await fetch(

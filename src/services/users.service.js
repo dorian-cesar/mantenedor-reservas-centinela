@@ -26,5 +26,23 @@ class UserService {
             throw error;
         }
     }
+
+    static async updateUser(id, payload) {
+        const response = await fetch(`${API_URL}/users/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const txt = await response.text().catch(() => null);
+            throw new Error(txt || 'Error al actualizar usuario');
+        }
+
+        return await response.json();
+    }
 }
 export default UserService;

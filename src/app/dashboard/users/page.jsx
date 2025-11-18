@@ -14,11 +14,14 @@ import {
 } from 'lucide-react';
 import Notification from '@/components/notification';
 import UserService from "@/services/users.service";
+import UserModal from "@/components/modals/userModal";
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState({ type: '', message: '' });
+    const [showModal, setShowModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
 
     // paginación
     const [page, setPage] = useState(1);
@@ -63,6 +66,25 @@ export default function UsersPage() {
         showNotification('success', 'Lista actualizada');
     };
 
+    const handleEditUser = (user) => {
+        setEditingUser(user);
+        setShowModal(true);
+    };
+
+    const handleSaveUser = async (userData) => {
+        try {
+            if (editingUser) {
+                await UserService.updateUser(editingUser._id, userData);
+                showNotification('success', 'Usuario actualizado correctamente');
+            }
+
+            setShowModal(false);
+            loadUsers();
+        } catch (error) {
+            showNotification('error', error.message);
+        }
+    };
+
     const roleBadgeClass = (role) => {
         // acepta 'admin' o 'administrador' según lo que puedas recibir
         const r = (role || '').toLowerCase();
@@ -83,7 +105,7 @@ export default function UsersPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleRefresh}
-                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md"
+                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
                             aria-label="Refrescar"
                         >
                             <RefreshCcw className="h-4 w-4" />
@@ -108,6 +130,7 @@ export default function UsersPage() {
                                             <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Usuario</th>
                                             <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Correo</th>
                                             <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Rol</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
@@ -128,6 +151,15 @@ export default function UsersPage() {
                                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${roleBadgeClass(user.role)}`}>
                                                         {user.role}
                                                     </span>
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                    <button
+                                                        onClick={() => handleEditUser(user)}
+                                                        className="text-blue-600 hover:text-blue-900 bg-blue-200 p-2 rounded-full cursor-pointer"
+                                                        aria-label={`Editar ${user.nombre}`}
+                                                    >
+                                                        <Edit className="h-5 w-5" />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -205,6 +237,13 @@ export default function UsersPage() {
                     </div>
                 )}
             </div>
+            {showModal && (
+                <UserModal
+                    user={editingUser}
+                    onSave={handleSaveUser}
+                    onClose={() => setShowModal(false)}
+                />
+            )}
         </div>
     )
 }
