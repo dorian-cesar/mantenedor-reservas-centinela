@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation";
 
 import Notification from "@/components/notification";
+import SessionHelper from "@/utils/session";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,9 +20,21 @@ export default function LoginPage() {
     setShowPassword(prev => !prev);
   }
 
+  const showNotification = ({ type, message }) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification({ type: '', message: '' }), 5000);
+  };
+
   const handleLogin = async (e) => {
-    e.preventDefault(); // evita la recarga del form
+    e.preventDefault();
     setLoading(true);
+
+    if (!email || !password) {
+      showNotification({ type: "error", message: "Por favor completa todos los campos" });
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         method: "POST",
@@ -34,28 +47,40 @@ export default function LoginPage() {
         })
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        showNotification('error', `${data.message}`);
+      const data = await res.json().catch(() => ({}));
+      console.log(data);
+
+      if (res.ok && (data.token || data.status === 200)) {
+        const rol = data.user.role;
+        if (rol !== "admin") {
+          showNotification({ type: "warning", message: "Acceso denegado, contacte un administrador." });
+          setLoading(false);
+          return;
+        }
+        if (data.token) {
+          const sessionResult = await SessionHelper.loginSession(
+            data.token,
+            data.user
+          );
+
+          if (sessionResult.success) {
+            showNotification({ type: "success", message: "Inicio de sesión exitoso" });
+            setTimeout(() => {
+              router.replace("/dashboard");
+            }, 1500);
+          } else {
+            showNotification({ type: "error", message: sessionResult.error });
+          }
+        }
         return;
       }
-
-      const data = await res.json();
-      showNotification('success', `Inicio de sesión exitoso`);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      router.replace("/dashboard")
+      showNotification({ type: "error", message: data.mensaje || "Credenciales inválidas" });
     } catch (err) {
-      console.error("Network error:", err);
-      showNotification('error', `Error del servidor`);
+      console.error("fetch error:", err);
+      showNotification({ type: "error", message: "Error al conectar con el servidor" });
     } finally {
       setLoading(false);
     }
-  }
-
-  const showNotification = (type, message) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification({ type: '', message: '' }), 5000);
   };
 
   return (
