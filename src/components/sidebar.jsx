@@ -67,9 +67,9 @@ export default function Sidebar({ className = "" }) {
     }
 
     return (
-        <div className={`flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} ${className}`}>
+        <div className={`flex flex-col bg-linear-to-b from-white to-sky-200 border-r border-gray-200 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} ${className}`}>
 
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 h-22">
                 {!isCollapsed && (
                     <div className="flex items-center space-x-2">
                         <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-indigo-600 rounded-lg p-2">
@@ -141,7 +141,7 @@ export default function Sidebar({ className = "" }) {
 
                 <button
                     onClick={handleLogout}
-                    className="w-full flex items-center rounded-xl px-3 py-3 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group cursor-pointer"
+                    className="w-full flex items-center rounded-xl px-3 py-3 text-red-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group cursor-pointer"
                 >
                     <div className="flex items-center justify-center w-6 h-6">
                         <LogOut size={20} />

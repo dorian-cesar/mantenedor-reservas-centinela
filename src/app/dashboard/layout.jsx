@@ -1,4 +1,5 @@
 import Sidebar from "@/components/sidebar";
+import Navbar from "@/components/navbar";
 
 export const metadata = {
     title: "Dashboard",
@@ -8,8 +9,16 @@ export const metadata = {
 export default function DashboardLayout({ children }) {
     return (
         <>
-            <Sidebar />
-            <main className="w-full">{children}</main>
+            <main className="flex h-screen overflow-hidden w-full">
+                <Sidebar />
+
+                <div className="flex flex-col w-full">
+                    <Navbar />
+                    <div className="p-4 flex-1 overflow-y-scroll">
+                        {children}
+                    </div>
+                </div>
+            </main>
         </>
     );
 }
