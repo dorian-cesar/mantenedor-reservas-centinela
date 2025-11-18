@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { usePathname, useRouter } from 'next/navigation';
 import Link from "next/link";
+import SessionHelper from "@/utils/session";
 import {
     Home,
     Users,
@@ -53,10 +54,10 @@ export default function Sidebar({ className = "" }) {
         setIsCollapsed(!isCollapsed)
     }
 
-    const handleLogout = () => {
-        localStorage.clear();
+    const handleLogout = async () => {
+        await SessionHelper.logout();
         router.replace("/");
-    }
+    };
 
     const getUserInitials = () => {
         if (!user) return "US";
