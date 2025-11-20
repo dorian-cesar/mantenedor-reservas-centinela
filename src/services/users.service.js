@@ -44,5 +44,41 @@ class UserService {
 
         return await response.json();
     }
+
+    static async activeUser(id, isActive) {
+        const response = await fetch(`${API_URL}/users/${id}/activo`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(isActive)
+        });
+
+        if (!response.ok) {
+            const txt = await response.text().catch(() => null);
+            throw new Error(txt || 'Error al actualizar usuario');
+        }
+
+        return await response.json();
+    }
+
+    static async createUser(payload) {
+        const response = await fetch(`${API_URL}/users`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const txt = await response.text().catch(() => null);
+            throw new Error(txt || 'Error al crear usuario');
+        }
+
+        return await response.json();
+    }
 }
 export default UserService;
