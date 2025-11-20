@@ -8,7 +8,8 @@ import {
     RefreshCcw,
     Check,
     XIcon,
-    Plus
+    Plus,
+    ArrowDownToLine
 } from 'lucide-react';
 import Notification from '@/components/notification';
 import UserService from "@/services/users.service";
@@ -116,6 +117,39 @@ export default function UsersPage() {
         }
     };
 
+    const handleExportCSV = () => {
+        if (!users || users.length === 0) {
+            showNotification("error", "No hay usuarios para exportar");
+            return;
+        }
+
+        // Campos que quieres exportar (puedes agregar o quitar)
+        const headers = ["name", "email", "role", "rut", "activo"];
+
+        // Convertir a CSV
+        const csvContent = [
+            headers.join(","), // encabezados
+            ...users.map(u =>
+                headers.map(h => `"${String(u[h] ?? "").replace(/"/g, '""')}"`).join(",")
+            )
+        ].join("\n");
+
+        // Crear blob y disparar descarga
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "usuarios.csv");
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showNotification("success", "CSV exportado correctamente");
+    };
+
     const roleBadgeClass = (role) => {
         const r = (role || '').toLowerCase();
         if (r === 'admin' || r === 'superUser') {
@@ -133,6 +167,14 @@ export default function UsersPage() {
                     <h2 className="text-xl font-semibold">Usuarios</h2>
 
                     <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleExportCSV}
+                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
+                            aria-label="Refrescar"
+                        >
+                            <ArrowDownToLine className="h-4 w-4" />
+                            <span className="text-sm hidden sm:inline">Exportar (CSV)</span>
+                        </button>
                         <div className="flex items-center gap-2">
                             {superUser && (
                                 <button
