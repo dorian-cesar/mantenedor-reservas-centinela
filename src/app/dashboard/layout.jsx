@@ -2,9 +2,9 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 
 export const metadata = {
-    title: "Dashboard",
+    title: "Administrador de reservas - Dashboard",
     description: "Dashboard de gestión",
-};
+  };
 
 export default function DashboardLayout({ children }) {
     return (
