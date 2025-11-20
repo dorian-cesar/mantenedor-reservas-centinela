@@ -9,7 +9,7 @@ import { ChevronDown } from "lucide-react";
 
 export default function Navbar({ onMenuToggle, className = "" }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isClient, setIsClient] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function Navbar({ onMenuToggle, className = "" }) {
     router.replace("/");
   };
 
-  const user = isClient ? SessionHelper.getUser() : null;
+  const user = typeof window !== "undefined" ? SessionHelper.getUser() : null;
 
   useEffect(() => {
     if (!isClient) return;
@@ -100,9 +100,12 @@ export default function Navbar({ onMenuToggle, className = "" }) {
                 <h1 className="text-2xl font-bold text-gray-900">
                   {getPageTitle()}
                 </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  Bienvenido de vuelta, {user?.name?.split(" ")[0] || "Usuario"}
-                </p>
+                {typeof window !== "undefined" && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Bienvenido de vuelta,{" "}
+                    {user?.name?.split(" ")[0] || "Usuario"}
+                  </p>
+                )}
               </div>
             </div>
 

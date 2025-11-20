@@ -16,7 +16,7 @@ export default function DashboardPage() {
 
   const sections = [
     { name: "Usuarios", icon: Users, path: "/dashboard/users" },
-    { name: "Ciudades", icon: FileText, path: "/dashboard/cities" },
+    { name: "Origen y Destinos", icon: FileText, path: "/dashboard/cities" },
     { name: "Reportes", icon: BarChart3, path: "/dashboard/reports" },
   ];
 
