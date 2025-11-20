@@ -14,12 +14,15 @@ import Notification from '@/components/notification';
 import UserService from "@/services/users.service";
 import UserModal from "@/components/modals/userModal";
 
+import SessionHelper from "@/utils/session";
+
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState({ type: '', message: '' });
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [superUser, setSuperUser] = useState(false)
 
     // paginación
     const [page, setPage] = useState(1);
@@ -34,6 +37,9 @@ export default function UsersPage() {
 
     useEffect(() => {
         loadUsers(page);
+        const currentUser = SessionHelper.getUser();
+        console.log(currentUser?.role)
+        setSuperUser(String(currentUser?.role) === "superUser");
     }, [page]);
 
     const loadUsers = async (page = 1) => {
@@ -128,14 +134,16 @@ export default function UsersPage() {
 
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleCreateUser}
-                                className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-                                aria-label="Refrescar"
-                            >
-                                <Plus className="h-4 w-4" />
-                                <span className="text-sm hidden sm:inline">Nuevo Usuario</span>
-                            </button>
+                            {superUser && (
+                                <button
+                                    onClick={handleCreateUser}
+                                    className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
+                                    aria-label="Refrescar"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span className="text-sm hidden sm:inline">Nuevo Usuario</span>
+                                </button>
+                            )}
                         </div>
                         <div className="flex items-center gap-2">
                             <button
@@ -173,7 +181,7 @@ export default function UsersPage() {
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {users.map((user, idx) => (
-                                            <tr key={user._id} className={`hover:bg-gray-50`}>
+                                            <tr key={user._id} className={`${!user.activo ? 'bg-gray-200 hover:bg-gray-300 ' : 'bg-white hover:bg-gray-50'}`}>
                                                 <td className="px-4 py-4 whitespace-nowrap">
                                                     <div className="text-sm font-medium text-gray-900">
                                                         {(page - 1) * limit + idx + 1}
@@ -197,13 +205,15 @@ export default function UsersPage() {
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => handleEditUser(user)}
-                                                            className="text-blue-600 hover:text-blue-900 bg-blue-200 p-2 rounded-full cursor-pointer"
-                                                            aria-label={`Editar ${user.name}`}
-                                                        >
-                                                            <Edit className="h-5 w-5" />
-                                                        </button>
+                                                        {superUser && (
+                                                            <button
+                                                                onClick={() => handleEditUser(user)}
+                                                                className="text-blue-600 hover:text-blue-900 bg-blue-200 p-2 rounded-full cursor-pointer"
+                                                                aria-label={`Editar ${user.name}`}
+                                                            >
+                                                                <Edit className="h-5 w-5" />
+                                                            </button>
+                                                        )}
                                                         {user.activo
                                                             ? <button
                                                                 onClick={() => handleDesactiveUser(user)}
