@@ -39,8 +39,8 @@ export default function Sidebar({ className = "" }) {
     const menuItems = [
         { icon: <Home size={20} />, label: "Dashboard", href: "/dashboard" },
         { icon: <Users size={20} />, label: "Usuarios", href: "/dashboard/users" },
-        { icon: <Building2 size={20} />, label: "Ciudades", href: "/dashboard/cities"},
-        { icon: <BarChart3 size={20} />, label: "Reportes", href: "/reports" },
+        { icon: <Building2 size={20} />, label: "Ciudades", href: "/dashboard/cities" },
+        { icon: <BarChart3 size={20} />, label: "Reportes", href: "/dashboard/reports" },
         { icon: <Mail size={20} />, label: "Mensajes", href: "/messages" },
         { icon: <Calendar size={20} />, label: "Calendario", href: "/calendar" },
     ]

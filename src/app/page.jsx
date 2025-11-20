@@ -52,11 +52,11 @@ export default function LoginPage() {
 
       if (res.ok && (data.token || data.status === 200)) {
         const rol = data.user.role;
-        // if (rol !== "admin") {
-        //   showNotification({ type: "warning", message: "Acceso denegado, contacte un administrador." });
-        //   setLoading(false);
-        //   return;
-        // }
+        if (rol !== "admin" && rol !== "superUser") {
+          showNotification({ type: "warning", message: "Acceso denegado, contacte un administrador." });
+          setLoading(false);
+          return;
+        }
         if (data.token) {
           const sessionResult = await SessionHelper.loginSession(
             data.token,

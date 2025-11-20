@@ -3,52 +3,76 @@ import SessionHelper from '@/utils/session';
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 class CitiesService {
-    static async getCities() {
+    static async getOrigins() {
         try {
-            const response = await fetch(
-                `${API_URL}/cities/origins`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${SessionHelper.getToken()}`,
-                        'Content-Type': 'application/json',
-                    },
+            const res = await fetch(`${API_URL}/cities/origins`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
                 }
-            );
+            });
 
-            if (!response.ok) {
-                throw new Error('Error al obtener usuarios');
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                throw new Error(txt || 'Error al obtener orígenes');
             }
 
-            return await response.json();
-        } catch (error) {
-            console.error('Error en getUsers:', error);
-            throw error;
+            const json = await res.json();
+            return json.origins || [];
+        } catch (err) {
+            console.error('CitiesService.getOrigins error:', err);
+            throw err;
+        }
+    }
+
+    static async getDestinations(origin) {
+        try {
+            const encoded = encodeURIComponent(origin);
+            const res = await fetch(`${API_URL}/cities/destinations/${encoded}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                throw new Error(txt || 'Error al obtener destinos');
+            }
+
+            const json = await res.json();
+            // asumimos { origin: 'X', destinations: [...] }
+            return json.destinations || [];
+        } catch (err) {
+            console.error('CitiesService.getDestinations error:', err);
+            throw err;
         }
     }
 
     static async getMap() {
         try {
-            const response = await fetch(
-                `${API_URL}/cities/map`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${SessionHelper.getToken()}`,
-                        'Content-Type': 'application/json',
-                    },
+            const res = await fetch(`${API_URL}/cities/map`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
                 }
-            );
+            });
 
-            if (!response.ok) {
-                throw new Error('Error al obtener usuarios');
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                throw new Error(txt || 'Error al obtener mapa de ciudades');
             }
 
-            return await response.json();
-        } catch (error) {
-            console.error('Error en getUsers:', error);
-            throw error;
+            const json = await res.json();
+            return json || {};
+        } catch (err) {
+            console.error('CitiesService.getMap error:', err);
+            throw err;
         }
     }
 }
+
 export default CitiesService;

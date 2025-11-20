@@ -17,8 +17,8 @@ export default function UserModal({ user, onSave, onClose }) {
 
     useEffect(() => {
         const currentUser = SessionHelper.getUser();
-        console.log(currentUser?._id)
-        setSuperUser(Number(currentUser?.id) === 1);
+        console.log(currentUser?.role)
+        setSuperUser(String(currentUser?.role) === "superUser");
     }, []);
 
     useEffect(() => {
@@ -134,12 +134,6 @@ export default function UserModal({ user, onSave, onClose }) {
                                 placeholder={user ? '• • • • • • • •' : 'Ingresa una contraseña'}
                             />
                         </div>
-
-                        {user && !superUser && (
-                            <p className="text-sm text-gray-500 mt-1">
-                                No puedes cambiar la contraseña de un usuario creado
-                            </p>
-                        )}
                     </div>
 
                     <div>
