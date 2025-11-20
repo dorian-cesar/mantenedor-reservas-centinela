@@ -3,10 +3,34 @@ import SessionHelper from '@/utils/session';
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 class CitiesService {
-    static async getUsers(page = 1, limit = 10) {
+    static async getCities() {
         try {
             const response = await fetch(
-                `${API_URL}/users?page=${page}&limit=${limit}`,
+                `${API_URL}/cities/origins`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Error al obtener usuarios');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error en getUsers:', error);
+            throw error;
+        }
+    }
+
+    static async getMap() {
+        try {
+            const response = await fetch(
+                `${API_URL}/cities/map`,
                 {
                     method: 'GET',
                     headers: {
@@ -27,4 +51,4 @@ class CitiesService {
         }
     }
 }
-export default UserService;
+export default CitiesService;
