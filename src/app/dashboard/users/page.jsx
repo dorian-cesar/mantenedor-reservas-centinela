@@ -117,38 +117,52 @@ export default function UsersPage() {
         }
     };
 
-    const handleExportCSV = () => {
-        if (!users || users.length === 0) {
-            showNotification("error", "No hay usuarios para exportar");
-            return;
+    const handleExportCSV = async () => {
+        try {
+            setLoading(true);
+            // Si tienes filtros activos, podrías pasarlos: { q: currentQ, role: currentRole }
+            const res = await UserService.getAllUsers();
+            const allUsers = (res && res.data) ? res.data : [];
+
+            if (!allUsers || allUsers.length === 0) {
+                showNotification("error", "No hay usuarios para exportar");
+                return;
+            }
+
+            // Campos que quieres exportar (ajusta si quieres incluir _id, createdAt, etc.)
+            const headers = ["_id", "name", "email", "role", "rut", "activo"];
+
+            const csvRows = [
+                headers.join(","), // encabezados
+                ...allUsers.map(u =>
+                    headers.map(h => {
+                        const val = u[h];
+                        // stringify booleans/nulos y escapar comillas dobles para CSV
+                        return `"${String(val ?? "").replace(/"/g, '""')}"`;
+                    }).join(",")
+                )
+            ];
+
+            const csvContent = csvRows.join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", `usuarios_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showNotification("success", `Exportados ${allUsers.length} usuarios`);
+        } catch (error) {
+            console.error("Error exportando CSV:", error);
+            showNotification("error", "Error exportando usuarios: " + (error.message || error));
+        } finally {
+            setLoading(false);
         }
-
-        // Campos que quieres exportar (puedes agregar o quitar)
-        const headers = ["name", "email", "role", "rut", "activo"];
-
-        // Convertir a CSV
-        const csvContent = [
-            headers.join(","), // encabezados
-            ...users.map(u =>
-                headers.map(h => `"${String(u[h] ?? "").replace(/"/g, '""')}"`).join(",")
-            )
-        ].join("\n");
-
-        // Crear blob y disparar descarga
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", "usuarios.csv");
-        document.body.appendChild(link);
-        link.click();
-
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        showNotification("success", "CSV exportado correctamente");
     };
+
 
     const roleBadgeClass = (role) => {
         const r = (role || '').toLowerCase();
