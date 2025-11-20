@@ -1,26 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  Plus,
-  Search,
-  Users,
-  Edit,
-  Trash2,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCcw,
-  XIcon,
-} from "lucide-react";
+import { RefreshCcw, Users } from "lucide-react";
 import Notification from "@/components/notification";
 import CitiesService from "@/services/cities.service";
-import UserModal from "@/components/modals/userModal";
 
 export default function CitiesPage() {
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ type: "", message: "" });
-  const [showModal, setShowModal] = useState(false);
 
   const showNotification = (type, message) => {
     setNotification({ type, message });
@@ -39,8 +26,14 @@ export default function CitiesPage() {
   const loadCities = async () => {
     try {
       setLoading(true);
-      const res = await CitiesService.getCities();
-      setCities(res.data);
+      const res = await CitiesService.getMap();
+
+      const formatted = Object.entries(res).map(([origin, destinations]) => ({
+        origin,
+        destinations,
+      }));
+
+      setCities(formatted);
     } catch (error) {
       showNotification("error", "Error al cargar ciudades: " + error.message);
     } finally {
@@ -56,16 +49,14 @@ export default function CitiesPage() {
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">Ciudades</h2>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-              aria-label="Refrescar"
-            >
-              <RefreshCcw className="h-4 w-4" />
-              <span className="text-sm hidden sm:inline">Refrescar</span>
-            </button>
-          </div>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
+            aria-label="Refrescar"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            <span className="text-sm hidden sm:inline">Refrescar</span>
+          </button>
         </div>
 
         <div className="bg-white rounded-xl shadow-xl overflow-hidden">
@@ -75,7 +66,7 @@ export default function CitiesPage() {
             </div>
           ) : (
             <>
-              {/* Tabla para md+ */}
+              {/* Tabla para pantallas grandes */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -84,45 +75,20 @@ export default function CitiesPage() {
                         #
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                        Usuario
+                        Origen
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                        Correo
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                        Rol
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">
-                        Acciones
+                        Destinos
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {cities.map((city, idx) => (
-                      <tr key={city._id} className={`hover:bg-gray-50`}>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {(page - 1) * limit + idx + 1}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {city.name}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {city.email}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${roleBadgeClass(
-                              city.role
-                            )}`}
-                          >
-                            {city.role}
-                          </span>
+                      <tr key={city.origin}>
+                        <td className="px-4 py-3">{idx + 1}</td>
+                        <td className="px-4 py-3 font-medium">{city.origin}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {city.destinations.join(", ")}
                         </td>
                       </tr>
                     ))}
@@ -130,7 +96,7 @@ export default function CitiesPage() {
                 </table>
               </div>
 
-              {/* Lista para sm/md pequeños */}
+              {/* Lista móvil */}
               <div className="md:hidden p-4">
                 {cities.length === 0 ? (
                   <div className="text-center py-8">
@@ -140,81 +106,20 @@ export default function CitiesPage() {
                 ) : (
                   <ul className="space-y-3">
                     {cities.map((city, idx) => (
-                      <li key={city._id} className="border rounded-lg p-3">
-                        <div className="flex justify-between items-start gap-2">
-                          <div>
-                            <div className="text-sm font-medium">
-                              {city.name}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {city.email}
-                            </div>
-                          </div>
-                          <div>
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${roleBadgeClass(
-                                city.role
-                              )}`}
-                            >
-                              {city.role}
-                            </span>
-                          </div>
+                      <li key={idx} className="border rounded-lg p-3">
+                        <div className="text-sm font-medium">{city.origin}</div>
+                        <div className="text-xs text-gray-500">
+                          {city.destinations.join(", ")}
                         </div>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
-
-              {cities.length === 0 && (
-                <div className="text-center py-8 hidden md:block">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No se encontraron ciudades</p>
-                </div>
-              )}
             </>
           )}
         </div>
-
-        {cities > 0 && (
-          <div className="flex flex-col sm:flex-row justify-center sm:justify-between items-center gap-3 mt-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handlePreviousPage}
-                disabled={page === 1 || loading}
-                className="bg-linear-to-tr from-gray-400 to-gray-500 hover:from-gray-600 hover:to-gray-800 text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                aria-label="Página anterior"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <span className="text-sm text-gray-600 font-medium">
-                Página {page} de {totalPages}
-              </span>
-
-              <button
-                onClick={handleNextPage}
-                disabled={page === totalPages || loading}
-                className="bg-linear-to-tr from-gray-400 to-gray-500 hover:from-gray-600 hover:to-gray-800 text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                aria-label="Página siguiente"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="text-sm text-gray-500 hidden sm:block">
-              {total} resultados
-            </div>
-          </div>
-        )}
       </div>
-      {showModal && (
-        <UserModal
-          user={editingUser}
-          onSave={handleSaveUser}
-          onClose={() => setShowModal(false)}
-        />
-      )}
     </div>
   );
 }
