@@ -3,10 +3,24 @@ import SessionHelper from '@/utils/session';
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 class UserService {
-    static async getUsers(page = 1, limit = 10) {
+    static async getUsers(page = 1, limit = 10, query = '', role = '') {
         try {
+            // Construir parámetros de query
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString()
+            });
+
+            if (query && query.trim() !== '') {
+                params.append('q', query.trim());
+            }
+
+            if (role && role.trim() !== '') {
+                params.append('role', role.trim());
+            }
+
             const response = await fetch(
-                `${API_URL}/users?page=${page}&limit=${limit}`,
+                `${API_URL}/users?${params.toString()}`,
                 {
                     method: 'GET',
                     headers: {
