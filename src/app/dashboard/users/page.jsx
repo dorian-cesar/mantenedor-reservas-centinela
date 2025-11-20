@@ -39,7 +39,6 @@ export default function UsersPage() {
     useEffect(() => {
         loadUsers(page);
         const currentUser = SessionHelper.getUser();
-        console.log(currentUser?.role)
         setSuperUser(String(currentUser?.role) === "superUser");
     }, [page]);
 

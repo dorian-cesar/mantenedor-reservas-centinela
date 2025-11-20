@@ -23,6 +23,7 @@ export default function Sidebar({ className = "" }) {
     const pathname = usePathname();
     const router = useRouter();
     const [user, setUser] = useState(null)
+    const [superUser, setSuperUser] = useState(false)
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -34,9 +35,17 @@ export default function Sidebar({ className = "" }) {
                 setUser({ name: userData, email: "" });
             }
         }
+        const currentUser = SessionHelper.getUser();
+        setSuperUser(String(currentUser?.role) === "superUser");
     }, [])
 
-    const menuItems = [
+    const adminItems = [
+        { icon: <Home size={20} />, label: "Dashboard", href: "/dashboard" },
+        { icon: <Users size={20} />, label: "Usuarios", href: "/dashboard/users" },
+        { icon: <BarChart3 size={20} />, label: "Reportes", href: "/dashboard/reports" },
+    ]
+
+    const superUserItems = [
         { icon: <Home size={20} />, label: "Dashboard", href: "/dashboard" },
         { icon: <Users size={20} />, label: "Usuarios", href: "/dashboard/users" },
         { icon: <Building2 size={20} />, label: "Ciudades", href: "/dashboard/cities" },
@@ -47,7 +56,6 @@ export default function Sidebar({ className = "" }) {
 
     const bottomMenuItems = [
         { icon: <Settings size={20} />, label: "Configuración", href: "/settings" },
-        { icon: <HelpCircle size={20} />, label: "Ayuda", href: "/help" },
     ]
 
     const toggleSidebar = () => {
@@ -88,35 +96,66 @@ export default function Sidebar({ className = "" }) {
             </div>
 
             <nav className="flex-1 px-3 py-4 space-y-1">
-                {menuItems.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
-                                ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                }`}
-                        >
-                            <div className="flex items-center justify-center w-6 h-6">
-                                {item.icon}
-                            </div>
+                {superUser
+                    ? superUserItems.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
+                                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    }`}
+                            >
+                                <div className="flex items-center justify-center w-6 h-6">
+                                    {item.icon}
+                                </div>
 
-                            {!isCollapsed && (
-                                <>
-                                    <span className="ml-3 font-medium text-sm">{item.label}</span>
-                                    {item.badge && (
-                                        <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-5 flex items-center justify-center">
-                                            {item.badge}
-                                        </span>
-                                    )}
-                                </>
-                            )}
-                        </Link>
-                    );
-                })}
+                                {!isCollapsed && (
+                                    <>
+                                        <span className="ml-3 font-medium text-sm">{item.label}</span>
+                                        {item.badge && (
+                                            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-5 flex items-center justify-center">
+                                                {item.badge}
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </Link>
+                        );
+                    })
+                    : adminItems.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
+                                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    }`}
+                            >
+                                <div className="flex items-center justify-center w-6 h-6">
+                                    {item.icon}
+                                </div>
+
+                                {!isCollapsed && (
+                                    <>
+                                        <span className="ml-3 font-medium text-sm">{item.label}</span>
+                                        {item.badge && (
+                                            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-5 flex items-center justify-center">
+                                                {item.badge}
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </Link>
+                        );
+                    })
+                }
             </nav>
+
 
             <div className="px-3 py-4 border-t border-gray-200 space-y-1">
                 {bottomMenuItems.map((item) => {
