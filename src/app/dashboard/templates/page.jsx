@@ -80,6 +80,9 @@ export default function TemplatesPage() {
 
     const handleDeleteTemplate = async (templateId) => {
         try {
+            if (!confirm("¿Estás seguro de que deseas eliminar esta template? Esta acción no se puede deshacer.")) {
+                return;
+            }
             await TemplateService.deleteTemplate(templateId);
             showNotification("success", "Template eliminada correctamente");
             loadTemplates();
