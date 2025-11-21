@@ -7,7 +7,8 @@ import {
     MapPin,
     Calendar,
     Edit,
-    Plus
+    Plus,
+    XIcon,
 } from "lucide-react";
 import Notification from "@/components/notification";
 import TemplateService from "@/services/template.service";
@@ -76,6 +77,17 @@ export default function TemplatesPage() {
             setLoading(false);
         }
     };
+
+    const handleDeleteTemplate = async (templateId) => {
+        try {
+            await TemplateService.deleteTemplate(templateId);
+            showNotification("success", "Template eliminada correctamente");
+            loadTemplates();
+        } catch (error) {
+            console.error("Error eliminando template:", error);
+            showNotification("error", "Error al eliminar template: " + (error.message || error));
+        }
+    }
 
     const handleEditTemplate = (template) => {
         setEditingTemplate(template);
@@ -299,6 +311,14 @@ export default function TemplatesPage() {
                                                                                         title="Editar"
                                                                                     >
                                                                                         <Edit className="h-4 w-4" />
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleDeleteTemplate(template._id)}
+                                                                                        className="text-red-600 hover:text-red-900 bg-red-200 p-2 rounded-full cursor-pointer"
+                                                                                        aria-label={`Eliminar ${template.serviceName}`}
+                                                                                        title={`Eliminar ${template.serviceName}`}
+                                                                                    >
+                                                                                        <XIcon className="h-5 w-5" />
                                                                                     </button>
                                                                                 </div>
                                                                             </td>

@@ -48,7 +48,6 @@ export default function LoginPage() {
       });
 
       const data = await res.json().catch(() => ({}));
-      console.log(data);
 
       if (res.ok && (data.token || data.status === 200)) {
         const rol = data.user.role;

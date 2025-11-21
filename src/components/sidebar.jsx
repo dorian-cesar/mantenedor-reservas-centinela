@@ -73,8 +73,7 @@ export default function Sidebar({ className = "" }) {
       label: "Reportes",
       href: "/dashboard/reports",
     },
-    { icon: <Mail size={20} />, label: "Mensajes", href: "/messages" },
-    { icon: <Calendar size={20} />, label: "Calendario", href: "/calendar" },
+    { icon: <Calendar size={20} />, label: "Templates", href: "/dashboard/templates" },
   ];
 
   const adminBottomMenuItems = [
