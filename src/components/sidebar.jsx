@@ -77,7 +77,10 @@ export default function Sidebar({ className = "" }) {
     { icon: <Calendar size={20} />, label: "Calendario", href: "/calendar" },
   ];
 
-  const bottomMenuItems = [
+  const adminBottomMenuItems = [
+  ];
+
+  const superUserBottomMenuItems = [
     { icon: <Settings size={20} />, label: "Configuración", href: "/settings" },
   ];
 
@@ -105,9 +108,8 @@ export default function Sidebar({ className = "" }) {
 
   return (
     <div
-      className={`flex flex-col bg-linear-to-b from-white to-sky-200 border-r border-gray-200 transition-all duration-300 ${
-        isCollapsed ? "w-16" : "w-64"
-      } ${className}`}
+      className={`flex flex-col bg-linear-to-b from-white to-sky-200 border-r border-gray-200 transition-all duration-300 ${isCollapsed ? "w-16" : "w-64"
+        } ${className}`}
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-200 h-22">
         {!isCollapsed && (
@@ -129,91 +131,110 @@ export default function Sidebar({ className = "" }) {
       <nav className="flex-1 px-3 py-4 space-y-1">
         {superUser
           ? superUserItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${
-                    isActive
-                      ? "bg-blue-50 text-blue-600 border border-blue-100"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
+                  ? "bg-blue-50 text-blue-600 border border-blue-100"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
-                >
-                  <div className="flex items-center justify-center w-6 h-6">
-                    {item.icon}
-                  </div>
+              >
+                <div className="flex items-center justify-center w-6 h-6">
+                  {item.icon}
+                </div>
 
-                  {!isCollapsed && (
-                    <>
-                      <span className="ml-3 font-medium text-sm">
-                        {item.label}
+                {!isCollapsed && (
+                  <>
+                    <span className="ml-3 font-medium text-sm">
+                      {item.label}
+                    </span>
+                    {item.badge && (
+                      <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-5 flex items-center justify-center">
+                        {item.badge}
                       </span>
-                      {item.badge && (
-                        <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-5 flex items-center justify-center">
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Link>
-              );
-            })
+                    )}
+                  </>
+                )}
+              </Link>
+            );
+          })
           : adminItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${
-                    isActive
-                      ? "bg-blue-50 text-blue-600 border border-blue-100"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
+                  ? "bg-blue-50 text-blue-600 border border-blue-100"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
-                >
-                  <div className="flex items-center justify-center w-6 h-6">
-                    {item.icon}
-                  </div>
+              >
+                <div className="flex items-center justify-center w-6 h-6">
+                  {item.icon}
+                </div>
 
-                  {!isCollapsed && (
-                    <>
-                      <span className="ml-3 font-medium text-sm">
-                        {item.label}
+                {!isCollapsed && (
+                  <>
+                    <span className="ml-3 font-medium text-sm">
+                      {item.label}
+                    </span>
+                    {item.badge && (
+                      <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-5 flex items-center justify-center">
+                        {item.badge}
                       </span>
-                      {item.badge && (
-                        <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-5 flex items-center justify-center">
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Link>
-              );
-            })}
+                    )}
+                  </>
+                )}
+              </Link>
+            );
+          })}
       </nav>
 
       <div className="px-3 py-4 border-t border-gray-200 space-y-1">
-        {bottomMenuItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${
-                isActive
+        {superUser ?
+          superUserBottomMenuItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
                   ? "bg-blue-50 text-blue-600 border border-blue-100"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              <div className="flex items-center justify-center w-6 h-6">
-                {item.icon}
-              </div>
-              {!isCollapsed && (
-                <span className="ml-3 font-medium text-sm">{item.label}</span>
-              )}
-            </Link>
-          );
-        })}
+                  }`}
+              >
+                <div className="flex items-center justify-center w-6 h-6">
+                  {item.icon}
+                </div>
+                {!isCollapsed && (
+                  <span className="ml-3 font-medium text-sm">{item.label}</span>
+                )}
+              </Link>
+            );
+          })
+          :
+          adminBottomMenuItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
+                  ? "bg-blue-50 text-blue-600 border border-blue-100"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+              >
+                <div className="flex items-center justify-center w-6 h-6">
+                  {item.icon}
+                </div>
+                {!isCollapsed && (
+                  <span className="ml-3 font-medium text-sm">{item.label}</span>
+                )}
+              </Link>
+            );
+          })}
 
         <button
           onClick={handleLogout}

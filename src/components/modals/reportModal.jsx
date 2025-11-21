@@ -6,7 +6,7 @@ export default function ReportModal({ report, loading, onClose }) {
         if (!report) return;
 
         const rows = [
-            ["Código Servicio", "Origen", "Destino", "Hora de salida", "Nombre", "Apellido", "Correo"]
+            ["Código Servicio", "Origen", "Destino", "Fecha de Salida", "Hora de salida", "Asiento", "Nombre", "Apellido", "Correo", "Rut"]
         ];
 
         report.passengers?.forEach(p => {
@@ -16,10 +16,13 @@ export default function ReportModal({ report, loading, onClose }) {
                 report.serviceInfo.serviceNumber,
                 report.serviceInfo.origin,
                 report.serviceInfo.destination,
+                report.serviceInfo.date,
                 report.serviceInfo.time,
+                p.seatNumber,
                 firstName,
                 lastName,
-                p.passengerEmail
+                p.passengerEmail,
+                p.passengerRut
             ]);
         });
 

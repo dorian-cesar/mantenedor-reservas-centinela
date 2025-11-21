@@ -11,6 +11,8 @@ export default function Navbar({ onMenuToggle, className = "" }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
+  const [user, setUser] = useState(null);
+
   const pathname = usePathname();
   const router = useRouter();
 
@@ -19,7 +21,11 @@ export default function Navbar({ onMenuToggle, className = "" }) {
     router.replace("/");
   };
 
-  const user = typeof window !== "undefined" ? SessionHelper.getUser() : null;
+  useEffect(() => {
+    setIsClient(true);
+    const u = SessionHelper.getUser();
+    setUser(u);
+  }, []);
 
   useEffect(() => {
     if (!isClient) return;
@@ -46,7 +52,7 @@ export default function Navbar({ onMenuToggle, className = "" }) {
     checkSession();
 
     return () => clearInterval(interval);
-  }, [isClient]);
+  }, [isClient, router]);
 
   const handleLogout = async () => {
     await SessionHelper.logout();
@@ -57,8 +63,9 @@ export default function Navbar({ onMenuToggle, className = "" }) {
     const routes = {
       "/dashboard": "Dashboard",
       "/dashboard/users": "Gestión de Usuarios",
-      "/documents": "Documentos",
-      "/reports": "Reportes y Análisis",
+      "/dashboard/cities": "Origenes y Destinos",
+      "/dashboard/reserve": "Reservar Asientos",
+      "/dashboard/reports": "Reportes y Exportación",
       "/messages": "Mensajes",
       "/calendar": "Calendario",
       "/settings": "Configuración",
@@ -85,8 +92,8 @@ export default function Navbar({ onMenuToggle, className = "" }) {
       {showSessionWarning && (
         <Notification
           type="warning"
-          message={`Tu sesión ha expirado. Por favor, inicia sesión nuevamente.`}
-          title="Sesión expirada"
+          message={`Tu sesión está por expirar. Por favor, guarda tu trabajo.`}
+          title="Sesión próxima a expirar"
           timer={5000}
         />
       )}
@@ -100,10 +107,11 @@ export default function Navbar({ onMenuToggle, className = "" }) {
                 <h1 className="text-2xl font-bold text-gray-900">
                   {getPageTitle()}
                 </h1>
-                {typeof window !== "undefined" && (
+
+                {/* Renderizar mensaje de bienvenida solo en cliente para evitar mismatch */}
+                {isClient && (
                   <p className="text-sm text-gray-500 mt-1">
-                    Bienvenido de vuelta,{" "}
-                    {user?.name?.split(" ")[0] || "Usuario"}
+                    Bienvenido de vuelta, {user?.name?.split(" ")[0] || "Usuario"}
                   </p>
                 )}
               </div>
@@ -130,9 +138,8 @@ export default function Navbar({ onMenuToggle, className = "" }) {
                   </div>
                   <ChevronDown
                     size={16}
-                    className={`text-gray-400 transition-transform duration-200 ${
-                      isProfileOpen ? "rotate-180" : ""
-                    }`}
+                    className={`text-gray-400 transition-transform duration-200 ${isProfileOpen ? "rotate-180" : ""
+                      }`}
                   />
                 </button>
 
@@ -140,20 +147,12 @@ export default function Navbar({ onMenuToggle, className = "" }) {
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                     <div className="px-4 py-2 border-b border-gray-100">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {user?.name || "Usuario Sistema"} ·{" "}
-                        {user?.role || "Admin"}
+                        {user?.name || "Usuario Sistema"} · {user?.role || "Admin"}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
                         {user?.email || "admin@sistema.com"}
                       </p>
                     </div>
-                    <a
-                      href="/settings"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                    >
-                      Configuración
-                    </a>
-
                     <div className="border-t border-gray-100 mt-2 pt-2">
                       <button
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 cursor-pointer"
