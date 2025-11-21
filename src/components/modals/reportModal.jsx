@@ -6,12 +6,12 @@ export default function ReportModal({ report, loading, onClose }) {
         if (!report) return;
 
         const rows = [
-            ["Código Servicio", "Origen", "Destino", "Fecha de Salida", "Hora de salida", "Asiento", "Nombre", "Apellido", "Correo", "Rut"]
+            ["Código Servicio", "Origen", "Destino", "Fecha de Salida", "Hora de salida", "Asiento", "Nombre"/*, "Apellido"*/, "Correo", "Rut"]
         ];
 
         report.passengers?.forEach(p => {
-            const [firstName, ...lastNameParts] = p.passengerName.split(" ");
-            const lastName = lastNameParts.join(" ");
+            // const [firstName, ...lastNameParts] = p.passengerName.split(" ");
+            // const lastName = lastNameParts.join(" ");
             rows.push([
                 report.serviceInfo.serviceNumber,
                 report.serviceInfo.origin,
@@ -19,8 +19,7 @@ export default function ReportModal({ report, loading, onClose }) {
                 report.serviceInfo.date,
                 report.serviceInfo.time,
                 p.seatNumber,
-                firstName,
-                lastName,
+                p.passengerName,
                 p.passengerEmail,
                 p.passengerRut
             ]);
