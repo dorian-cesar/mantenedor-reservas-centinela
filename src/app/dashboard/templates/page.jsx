@@ -12,6 +12,8 @@ import {
 import Notification from "@/components/notification";
 import TemplateService from "@/services/template.service";
 import TemplateModal from "@/components/modals/templateModal";
+import ServicesService from "@/services/services.service";
+import Swal from "sweetalert2";
 
 export default function TemplatesPage() {
     const [templates, setTemplates] = useState({});
@@ -87,17 +89,61 @@ export default function TemplatesPage() {
 
     const handleSaveTemplate = async (data) => {
         try {
+            let createdId;
+
             if (editingTemplate) {
                 await TemplateService.updateTemplate(editingTemplate._id, data);
-                showNotification('success', 'Template actualizada correctamente');
+                showNotification("success", "Template actualizada correctamente");
+                setShowModal(false);
+                loadTemplates();
             } else {
-                await TemplateService.createTemplate(data);
-                showNotification('success', 'Template creada correctamente');
+                // Crear template
+                const res = await TemplateService.createTemplate(data);
+                createdId = res._id || res.id;
+
+                showNotification("success", "Template creada correctamente");
+
+                // Usar setTimeout para asegurar que el modal se cierre antes del SweetAlert
+                setTimeout(async () => {
+                    // Preguntar al usuario si quiere crear servicios ahora
+                    const result = await Swal.fire({
+                        title: "¿Crear servicios ahora?",
+                        text: "¿Deseas crear servicios a partir de esta plantilla ahora mismo?",
+                        icon: "question",
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, crear servicios",
+                        cancelButtonText: "No, después",
+                        confirmButtonColor: "#3085d6",
+                        cancelButtonColor: "#d33",
+                        reverseButtons: true,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        customClass: {
+                            popup: "rounded-lg"
+                        }
+                    });
+
+                    if (result.isConfirmed) {
+                        try {
+                            await ServicesService.generateOne(createdId);
+                            showNotification("success", "Servicios creados correctamente por 14 días");
+                        } catch (err) {
+                            console.error("Error creando services:", err);
+                            showNotification("error", "Error al crear servicios: " + (err?.message || err));
+                        }
+                    }
+
+                    // Recargar templates después de todo el proceso
+                    loadTemplates();
+                }, 1500); // Pequeño delay para asegurar el cierre del modal
+
+                // Cerrar modal inmediatamente
+                setShowModal(false);
             }
-            setShowModal(false);
-            loadTemplates();
         } catch (error) {
-            showNotification('error', error.message);
+            console.error("Error guardando template:", error);
+            showNotification("error", error?.message || "Error guardando template");
+            setShowModal(false); // Cerrar modal también en caso de error
         }
     };
 
