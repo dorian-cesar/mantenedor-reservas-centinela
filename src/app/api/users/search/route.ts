@@ -1,23 +1,39 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const rut = searchParams.get("rut");
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // Simulación de búsqueda de usuario
-  // En producción, aquí harías una query a tu base de datos
+export async function POST(request: NextRequest) {
+  const { rut } = await request.json();
+  const token = request.headers.get("authorization");
 
   if (!rut) {
     return NextResponse.json({ error: "RUT es requerido" }, { status: 400 });
   }
 
-  // Mock data
-  const user = {
-    id: "1",
-    name: "Juan Pérez",
-    rut: rut,
-    email: "juan.perez@email.com",
-  };
+  try {
+    const response = await fetch(`${API_URL}/users?q=${rut}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ?? "",
+      },
+      cache: "no-store",
+    });
 
-  return NextResponse.json(user);
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: "Error al obtener usuario" },
+        { status: response.status }
+      );
+    }
+
+    const user = await response.json();
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error("Error al obtener usuario", error);
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
+      { status: 500 }
+    );
+  }
 }

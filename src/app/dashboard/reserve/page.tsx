@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,8 +29,11 @@ import {
 } from "@/components/ui/popover";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { startOfDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import CitiesService from "@/services/cities.service";
 
 type User = {
   id: string;
@@ -40,31 +43,49 @@ type User = {
 };
 
 type BusService = {
-  id: string;
+  _id: string;
+  template: {
+    _id: string;
+    origin: string;
+    destination: string;
+    time: string;
+    company: string;
+    serviceName: string;
+    serviceNumber: number;
+  };
+  date: string;
   origin: string;
   destination: string;
-  departureTime: string;
-  arrivalTime: string;
-  price: number;
-  availableSeats: number[];
+  busLayout: {
+    _id: string;
+    name: string;
+    pisos: number;
+    capacidad: number;
+    tipo_Asiento_piso_1: string;
+    floor1: {
+      seatMap: string[][];
+      _id: string;
+    };
+    floor2: {
+      seatMap: string[][];
+      _id: string;
+    };
+  };
+  seats: {
+    seatNumber: string;
+    reserved: boolean;
+    confirmed: boolean;
+    _id: string;
+  }[];
+  serviceName: string;
+  serviceNumber: number;
 };
 
 type Seat = {
-  number: number;
+  number: string;
   isAvailable: boolean;
   isBathroom: boolean;
 };
-
-const cities = [
-  "Santiago",
-  "Valparaíso",
-  "Concepción",
-  "La Serena",
-  "Antofagasta",
-  "Temuco",
-  "Puerto Montt",
-  "Iquique",
-];
 
 export default function ReservePage() {
   const [origin, setOrigin] = useState<string>("");
@@ -76,10 +97,40 @@ export default function ReservePage() {
   const [selectedService, setSelectedService] = useState<BusService | null>(
     null
   );
-  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
   const [isSearchingServices, setIsSearchingServices] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
+  const [citiesMap, setCitiesMap] = useState<Record<string, string[]>>({});
+  const [origins, setOrigins] = useState<string[]>([]);
+  const [destinations, setDestinations] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadCities = async () => {
+      try {
+        const map = await CitiesService.getMap();
+        setCitiesMap(map);
+        setOrigins(Object.keys(map).sort());
+      } catch (error) {
+        console.error("Error cargando ciudades:", error);
+        Swal.fire({
+          title: "Error",
+          text: "No se pudieron cargar las ciudades",
+          icon: "error",
+          confirmButtonText: "Entendido",
+        });
+      }
+    };
+
+    loadCities();
+  }, []);
+
+  useEffect(() => {
+    if (origin) {
+      setDestinations(citiesMap[origin] || []);
+      setDestination("");
+    }
+  }, [origin, citiesMap]);
 
   const formatRut = (value: string) => {
     const cleaned = value.replace(/[^0-9kK]/g, "");
@@ -105,31 +156,58 @@ export default function ReservePage() {
       return;
     }
 
-    setIsSearchingUser(true);
-    try {
-      // Simulación de API call
-      const response = await fetch(`/api/users/search?rut=${rut}`);
-      const userData = await response.json();
+    const rutClean = rut.replace(/\./g, "");
+    const token = localStorage.getItem("token");
 
-      // Mock data para demostración
-      const mockUser: User = {
-        id: "1",
-        name: "Juan Pérez",
-        rut: rut,
-        email: "juan.perez@email.com",
+    if (!token) {
+      Swal.fire({
+        title: "No autenticado",
+        text: "Debes iniciar sesión para continuar",
+        icon: "error",
+        confirmButtonText: "Ir al login",
+      });
+      return;
+    }
+
+    setIsSearchingUser(true);
+
+    try {
+      const response = await fetch(`/api/users/search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ rut: rutClean }),
+        cache: "no-store",
+      });
+
+      const res = await response.json();
+
+      const foundUser = res?.data?.[0];
+
+      if (!response.ok || !foundUser) {
+        Swal.fire({
+          title: "Usuario no encontrado",
+          text: res.error ?? "No se pudo encontrar el usuario",
+          icon: "error",
+          confirmButtonText: "Entendido",
+        });
+        return;
+      }
+
+      const normalizedUser: User = {
+        id: foundUser._id,
+        name: foundUser.name,
+        rut: foundUser.rut,
+        email: foundUser.email,
       };
 
-      setUser(mockUser);
-      Swal.fire({
-        title: "Usuario encontrado",
-        text: `Bienvenido ${mockUser.name}`,
-        icon: "success",
-        confirmButtonText: "Continuar",
-      });
+      setUser(normalizedUser);
     } catch (error) {
       Swal.fire({
         title: "Error",
-        text: "No se pudo encontrar el usuario",
+        text: "Ocurrió un error al buscar el usuario",
         icon: "error",
         confirmButtonText: "Entendido",
       });
@@ -149,81 +227,40 @@ export default function ReservePage() {
       return;
     }
 
-    if (origin === destination) {
-      Swal.fire({
-        title: "Error",
-        text: "El origen y destino no pueden ser iguales",
-        icon: "error",
-        confirmButtonText: "Entendido",
-      });
-      return;
-    }
-
     setIsSearchingServices(true);
+
     try {
-      // Simulación de API call
+      const token = localStorage.getItem("token");
       const response = await fetch(
-        `/api/bus-services?origin=${origin}&destination=${destination}&date=${format(
+        `/api/bus-services?origin=${encodeURIComponent(
+          origin
+        )}&destination=${encodeURIComponent(destination)}&date=${format(
           date,
           "yyyy-MM-dd"
-        )}`
+        )}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      const services = await response.json();
 
-      const mockServices: BusService[] = [
-        {
-          id: "1",
-          origin,
-          destination,
-          departureTime: "08:00",
-          arrivalTime: "12:00",
-          price: 15000,
-          availableSeats: [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16, 18, 20, 22, 24, 26,
-            28, 30, 32, 34, 36,
-          ],
-        },
-        {
-          id: "2",
-          origin,
-          destination,
-          departureTime: "14:00",
-          arrivalTime: "18:00",
-          price: 18000,
-          availableSeats: [
-            1, 3, 4, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35,
-            37,
-          ],
-        },
-        {
-          id: "3",
-          origin,
-          destination,
-          departureTime: "20:00",
-          arrivalTime: "00:00",
-          price: 20000,
-          availableSeats: [
-            2, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20, 22, 24, 26, 28, 30, 32,
-            34, 36, 38,
-          ],
-        },
-      ];
+      if (!response.ok) throw new Error("Error cargando servicios");
+      const data = await response.json();
 
-      setBusServices(mockServices);
-      setSelectedService(null);
-      setSelectedSeat(null);
-
-      console.log("[v0] Services loaded:", mockServices.length);
-
-      if (mockServices.length === 0) {
+      if (!data.length) {
         Swal.fire({
           title: "Sin resultados",
           text: "No se encontraron servicios para esta ruta",
           icon: "info",
           confirmButtonText: "Entendido",
         });
+        setBusServices([]);
+        return;
       }
+
+      // Usar la estructura directamente de la API
+      setBusServices(data);
+      setSelectedService(null);
+      setSelectedSeat(null);
     } catch (error) {
+      console.error(error);
       Swal.fire({
         title: "Error",
         text: "No se pudieron cargar los servicios",
@@ -236,7 +273,7 @@ export default function ReservePage() {
   };
 
   const reserveAndConfirmSeat = async () => {
-    if (!selectedService || selectedSeat === null || !user) {
+    if (!selectedService || !selectedSeat || !user) {
       Swal.fire({
         title: "Error",
         text: "Selecciona un servicio y un asiento",
@@ -248,51 +285,88 @@ export default function ReservePage() {
 
     setIsReserving(true);
     try {
-      // Simulación de API call
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("No hay token de autenticación");
+      }
+
       const reserveResponse = await fetch("/api/reservations/reserve", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           userId: user.id,
-          serviceId: selectedService.id,
+          serviceId: selectedService._id,
           seatNumber: selectedSeat,
         }),
       });
 
-      if (!reserveResponse.ok) throw new Error("Error en reserva");
+      if (!reserveResponse.ok) {
+        const errorData = await reserveResponse.json();
+        throw new Error(errorData.error || "Error en reserva");
+      }
 
-      const reservation = await reserveResponse.json();
+      const reserveData = await reserveResponse.json();
+      const reservationId = reserveData.reservation?._id;
 
-      // Simulación de API call
+      if (!reservationId) {
+        console.log("Respuesta completa de reserva:", reserveData);
+        throw new Error("No se pudo obtener el ID de la reserva");
+      }
+
       const confirmResponse = await fetch("/api/reservations/confirm", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          reservationId: reservation.id,
+          reservationId: reservationId,
         }),
       });
 
-      if (!confirmResponse.ok) throw new Error("Error en confirmación");
+      if (!confirmResponse.ok) {
+        const errorData = await confirmResponse.json();
+        throw new Error(errorData.error || "Error en confirmación");
+      }
 
-      setBusServices([]);
+      const updatedServices = busServices.map((service) => {
+        if (service._id === selectedService._id) {
+          return {
+            ...service,
+            seats: service.seats.map((seat) =>
+              seat.seatNumber === selectedSeat
+                ? { ...seat, reserved: true, confirmed: true }
+                : seat
+            ),
+          };
+        }
+        return service;
+      });
+
+      setBusServices(updatedServices);
       setSelectedService(null);
       setSelectedSeat(null);
 
-      setTimeout(() => {
-        console.log("[v0] Showing success alert");
-        Swal.fire({
-          title: "¡Reserva exitosa!",
-          html: `Asiento <strong>${selectedSeat}</strong> confirmado<br>${selectedService.origin} a ${selectedService.destination}`,
-          icon: "success",
-          confirmButtonText: "Perfecto",
-          timer: 7000,
-          timerProgressBar: true,
-        });
-      }, 300);
+      Swal.fire({
+        title: "¡Reserva exitosa!",
+        html: `Asiento <strong>${selectedSeat}</strong> confirmado<br>${selectedService.origin} a ${selectedService.destination}<br>Servicio: ${selectedService.serviceName}`,
+        icon: "success",
+        confirmButtonText: "Perfecto",
+        timer: 7000,
+        timerProgressBar: true,
+      });
     } catch (error) {
+      console.error("Error en reserva:", error);
       Swal.fire({
         title: "Error en la reserva",
-        text: "No se pudo completar tu reserva. Por favor intenta nuevamente.",
+        text:
+          error instanceof Error
+            ? error.message
+            : "No se pudo completar tu reserva. Por favor intenta nuevamente.",
         icon: "error",
         confirmButtonText: "Entendido",
         timer: 5000,
@@ -304,31 +378,20 @@ export default function ReservePage() {
   };
 
   const generateSeatLayout = (service: BusService) => {
-    const totalSpaces = 40;
     const seats: Seat[] = [];
 
-    // Generar 38 asientos con el patrón especial
-    for (let i = 0; i < 38; i++) {
-      const groupIndex = Math.floor(i / 4);
-      const posInGroup = i % 4;
+    service.busLayout.floor1.seatMap.forEach((row) => {
+      row.forEach((seat) => {
+        if (seat === "") return; // espacio vacío
 
-      // Patrón: posición 0->1, 1->2, 2->4, 3->3 en cada grupo
-      let seatNumber;
-      if (posInGroup === 0) seatNumber = groupIndex * 4 + 1;
-      else if (posInGroup === 1) seatNumber = groupIndex * 4 + 2;
-      else if (posInGroup === 2) seatNumber = groupIndex * 4 + 4;
-      else seatNumber = groupIndex * 4 + 3;
-
-      seats.push({
-        number: seatNumber,
-        isAvailable: service.availableSeats.includes(seatNumber),
-        isBathroom: false,
+        const seatData = service.seats.find((s) => s.seatNumber === seat);
+        seats.push({
+          number: seat,
+          isAvailable: !seatData?.reserved && !seatData?.confirmed,
+          isBathroom: seat.toUpperCase() === "WC",
+        });
       });
-    }
-
-    // Agregar 2 baños al final
-    seats.push({ number: 39, isAvailable: false, isBathroom: true });
-    seats.push({ number: 40, isAvailable: false, isBathroom: true });
+    });
 
     return seats;
   };
@@ -336,39 +399,63 @@ export default function ReservePage() {
   const renderSeats = (service: BusService) => {
     const seats = generateSeatLayout(service);
 
+    // Agrupar asientos en filas de 4
+    const rows: Seat[][] = [];
+    for (let i = 0; i < seats.length; i += 4) {
+      rows.push(seats.slice(i, i + 4));
+    }
+
     return (
-      <div className="grid grid-cols-4 gap-2 mt-4 max-w-md mx-auto">
-        {seats.map((seat) => (
-          <Button
-            key={seat.number}
-            variant={
-              selectedSeat === seat.number
-                ? "default"
-                : seat.isBathroom
-                ? "secondary"
-                : "outline"
-            }
-            className={cn(
-              "h-14 font-semibold transition-all",
-              !seat.isAvailable &&
-                !seat.isBathroom &&
-                "opacity-40 cursor-not-allowed",
-              seat.isBathroom && "opacity-60 cursor-not-allowed",
-              selectedSeat === seat.number && "ring-2 ring-primary scale-105"
-            )}
-            disabled={!seat.isAvailable || seat.isBathroom}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (seat.isAvailable && !seat.isBathroom) {
-                setSelectedSeat(seat.number);
-              }
-            }}
+      <div className="mt-4 max-w-md mx-auto">
+        {rows.map((row, rowIndex) => (
+          <div
+            key={`row-${rowIndex}`}
+            className="flex justify-center gap-2 mb-2"
           >
-            {seat.isBathroom ? "🚻" : seat.number}
-          </Button>
+            {row.map((seat, seatIndex) => (
+              <Button
+                key={`${seat.number}-${rowIndex}-${seatIndex}`}
+                variant={
+                  selectedSeat === seat.number
+                    ? "default"
+                    : seat.isBathroom
+                    ? "secondary"
+                    : seat.isAvailable
+                    ? "outline"
+                    : "destructive"
+                }
+                className={cn(
+                  "h-14 w-14 font-semibold transition-all shrink-0",
+                  !seat.isAvailable &&
+                    !seat.isBathroom &&
+                    "opacity-40 cursor-not-allowed",
+                  seat.isBathroom && "opacity-60 cursor-not-allowed",
+                  selectedSeat === seat.number &&
+                    "ring-2 ring-primary scale-105"
+                )}
+                disabled={!seat.isAvailable || seat.isBathroom}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (seat.isAvailable && !seat.isBathroom)
+                    setSelectedSeat(seat.number);
+                }}
+              >
+                {seat.isBathroom ? "🚻" : seat.number}
+              </Button>
+            ))}
+            {/* Rellenar con espacios vacíos si la fila no está completa */}
+            {row.length < 4 &&
+              Array.from({ length: 4 - row.length }).map((_, index) => (
+                <div key={`empty-${rowIndex}-${index}`} className="w-14 h-14" />
+              ))}
+          </div>
         ))}
       </div>
     );
+  };
+
+  const formatServiceTime = (service: BusService) => {
+    return service.template?.time || "Horario no disponible";
   };
 
   return (
@@ -379,7 +466,7 @@ export default function ReservePage() {
             Reserva tu Asiento
           </h1>
           <p className="text-muted-foreground text-pretty">
-            Encuentra y reserva tu viaje en bus de manera fácil y rápida
+            Encuentra y reserva el viaje de un usuario
           </p>
         </div>
 
@@ -388,10 +475,10 @@ export default function ReservePage() {
             <h2 className="text-2xl font-semibold">Servicios Disponibles</h2>
             {busServices.map((service, index) => (
               <Card
-                key={service.id}
+                key={service._id}
                 className={cn(
                   "transition-all animate-in slide-in-from-top-2 duration-300",
-                  selectedService?.id === service.id && "ring-2 ring-primary"
+                  selectedService?._id === service._id && "ring-2 ring-primary"
                 )}
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -408,22 +495,27 @@ export default function ReservePage() {
                         {service.origin} → {service.destination}
                       </CardTitle>
                       <CardDescription className="mt-1">
-                        Salida: {service.departureTime} • Llegada:{" "}
-                        {service.arrivalTime}
+                        Salida: {formatServiceTime(service)} • Servicio: #
+                        {service.serviceNumber}
+                      </CardDescription>
+                      <CardDescription>
+                        Empresa: {service.template?.company}
                       </CardDescription>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold">
-                        ${service.price.toLocaleString("es-CL")}
-                      </p>
                       <p className="text-sm text-muted-foreground">
-                        {service.availableSeats.length} asientos disponibles
+                        {
+                          service.seats.filter(
+                            (s) => !s.reserved && !s.confirmed
+                          ).length
+                        }{" "}
+                        asientos disponibles
                       </p>
                     </div>
                   </div>
                 </CardHeader>
 
-                {selectedService?.id === service.id && (
+                {selectedService?._id === service._id && (
                   <CardContent onClick={(e) => e.stopPropagation()}>
                     <div className="pt-4 border-t">
                       <h3 className="font-semibold mb-3 text-center">
@@ -439,7 +531,7 @@ export default function ReservePage() {
                           <span>Disponible</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 border rounded bg-background opacity-40"></div>
+                          <div className="w-6 h-6 border rounded bg-destructive opacity-40"></div>
                           <span>Ocupado</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -455,7 +547,7 @@ export default function ReservePage() {
                               Asiento seleccionado: {selectedSeat}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Total: ${service.price.toLocaleString("es-CL")}
+                              Servicio: {service.serviceName}
                             </p>
                           </div>
                           <Button
@@ -482,11 +574,11 @@ export default function ReservePage() {
           </div>
         )}
 
-        {/* Buscar usuario por RUT */}
+        {/* El resto del código permanece igual */}
         <Card>
           <CardHeader>
             <CardTitle>Identificación</CardTitle>
-            <CardDescription>Ingresa tu RUT para continuar</CardDescription>
+            <CardDescription>Ingresa el RUT del usuario</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
@@ -527,7 +619,6 @@ export default function ReservePage() {
           </CardContent>
         </Card>
 
-        {/* Formulario de búsqueda */}
         <Card>
           <CardHeader>
             <CardTitle>Detalles del Viaje</CardTitle>
@@ -544,7 +635,7 @@ export default function ReservePage() {
                     <SelectValue placeholder="Selecciona origen" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cities.map((city) => (
+                    {origins.map((city) => (
                       <SelectItem key={city} value={city}>
                         {city}
                       </SelectItem>
@@ -560,7 +651,7 @@ export default function ReservePage() {
                     <SelectValue placeholder="Selecciona destino" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cities.map((city) => (
+                    {destinations.map((city) => (
                       <SelectItem key={city} value={city}>
                         {city}
                       </SelectItem>
@@ -592,8 +683,13 @@ export default function ReservePage() {
                     mode="single"
                     selected={date}
                     onSelect={setDate}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
+                    disabled={(d) => {
+                      const todayChile = startOfDay(
+                        toZonedTime(new Date(), "America/Santiago")
+                      );
+                      return d < todayChile;
+                    }}
+                    locale={es}
                   />
                 </PopoverContent>
               </Popover>

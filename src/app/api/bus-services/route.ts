@@ -1,48 +1,55 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const origin = searchParams.get("origin");
-  const destination = searchParams.get("destination");
-  const date = searchParams.get("date");
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  if (!origin || !destination || !date) {
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const origin = searchParams.get("origin");
+    const destination = searchParams.get("destination");
+    const date = searchParams.get("date");
+
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    }
+
+    const apiRes = await fetch(
+      `${API_URL}/services/search?origin=${origin}&destination=${destination}&date=${date}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (apiRes.status === 401) {
+      return NextResponse.json(
+        { error: "Token inválido o expirado" },
+        { status: 401 }
+      );
+    }
+
+    if (!apiRes.ok) {
+      const text = await apiRes.text();
+      return NextResponse.json(
+        { error: "Error al obtener los servicios", details: text },
+        { status: apiRes.status }
+      );
+    }
+
+    const data = await apiRes.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("API error:", error);
     return NextResponse.json(
-      { error: "Todos los parámetros son requeridos" },
-      { status: 400 }
+      { error: "Error interno del servidor" },
+      { status: 500 }
     );
   }
-
-  // Mock data - En producción, aquí consultarías tu base de datos
-  const services = [
-    {
-      id: "1",
-      origin,
-      destination,
-      departureTime: "08:00",
-      arrivalTime: "12:00",
-      price: 15000,
-      availableSeats: [1, 2, 3, 5, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20],
-    },
-    {
-      id: "2",
-      origin,
-      destination,
-      departureTime: "14:00",
-      arrivalTime: "18:00",
-      price: 18000,
-      availableSeats: [1, 3, 4, 7, 9, 11, 13, 15, 17, 19],
-    },
-    {
-      id: "3",
-      origin,
-      destination,
-      departureTime: "20:00",
-      arrivalTime: "00:00",
-      price: 20000,
-      availableSeats: [2, 4, 6, 8, 10, 11, 13, 14, 16, 18, 19, 20],
-    },
-  ];
-
-  return NextResponse.json(services);
 }

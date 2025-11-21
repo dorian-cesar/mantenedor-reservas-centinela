@@ -1,27 +1,46 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { userId, serviceId, seatNumber } = body;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  if (!userId || !serviceId || !seatNumber) {
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { userId, serviceId, seatNumber } = body;
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "");
+
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    if (!userId || !serviceId || !seatNumber) {
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    }
+
+    const res = await fetch(`${API_URL}/reservations/reserve`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userId, serviceId, seatNumber }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: data?.message || "Error al reservar asiento" },
+        { status: res.status }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error(error);
     return NextResponse.json(
-      { error: "Todos los campos son requeridos" },
-      { status: 400 }
+      { error: error.message || "Error interno del servidor" },
+      { status: 500 }
     );
   }
-
-  // En producción, aquí crearías la reserva en tu base de datos
-  // y verificarías que el asiento esté disponible
-
-  const reservation = {
-    id: `res-${Date.now()}`,
-    userId,
-    serviceId,
-    seatNumber,
-    status: "reserved",
-    createdAt: new Date().toISOString(),
-  };
-
-  return NextResponse.json(reservation);
 }
