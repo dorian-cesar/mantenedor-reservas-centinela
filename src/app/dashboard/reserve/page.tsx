@@ -315,6 +315,35 @@ export default function ReservePage() {
 
       if (!reserveResponse.ok) {
         const errorData = await reserveResponse.json();
+
+        if (errorData.error?.includes("Asiento no disponible")) {
+          const updatedServices = busServices.map((service) => {
+            if (service._id === selectedService._id) {
+              return {
+                ...service,
+                seats: service.seats.map((seat) =>
+                  seat.seatNumber === selectedSeat
+                    ? { ...seat, reserved: true, confirmed: false }
+                    : seat
+                ),
+              };
+            }
+            return service;
+          });
+          setBusServices(updatedServices);
+          setSelectedSeat(null);
+
+          Swal.fire({
+            title: "Asiento no disponible",
+            text: "Este asiento ya fue reservado. Por favor selecciona otro asiento.",
+            icon: "warning",
+            confirmButtonText: "Entendido",
+            timer: 5000,
+            timerProgressBar: true,
+          });
+          return;
+        }
+
         throw new Error(errorData.error || "Error en reserva");
       }
 
@@ -363,15 +392,15 @@ export default function ReservePage() {
       Swal.fire({
         title: "¡Reserva exitosa!",
         html: `
-          <div class="text-left">
-            <p><strong>Usuario:</strong> ${user.name}</p>
-            <p><strong>Asiento:</strong> ${selectedSeat}</p>
-            <p><strong>Ruta:</strong> ${selectedService.origin} → ${selectedService.destination}</p>
-            <p><strong>Servicio:</strong> ${selectedService.serviceName}</p>
-            <p><strong>Fecha:</strong> ${selectedService.date}</p>
-            <p><strong>Hora:</strong> ${selectedService.template?.time}</p>
-          </div>
-        `,
+      <div class="text-left">
+        <p><strong>Usuario:</strong> ${user.name}</p>
+        <p><strong>Asiento:</strong> ${selectedSeat}</p>
+        <p><strong>Ruta:</strong> ${selectedService.origin} → ${selectedService.destination}</p>
+        <p><strong>Servicio:</strong> ${selectedService.serviceName}</p>
+        <p><strong>Fecha:</strong> ${selectedService.date}</p>
+        <p><strong>Hora:</strong> ${selectedService.template?.time}</p>
+      </div>
+    `,
         icon: "success",
         confirmButtonText: "Perfecto",
         timer: 7000,
@@ -379,17 +408,22 @@ export default function ReservePage() {
       });
     } catch (error) {
       console.error("Error en reserva:", error);
-      Swal.fire({
-        title: "Error en la reserva",
-        text:
-          error instanceof Error
-            ? error.message
-            : "No se pudo completar tu reserva. Por favor intenta nuevamente.",
-        icon: "error",
-        confirmButtonText: "Entendido",
-        timer: 5000,
-        timerProgressBar: true,
-      });
+
+      if (
+        error instanceof Error &&
+        !error.message.includes("Asiento no disponible")
+      ) {
+        Swal.fire({
+          title: "Error en la reserva",
+          text:
+            error.message ||
+            "No se pudo completar tu reserva. Por favor intenta nuevamente.",
+          icon: "error",
+          confirmButtonText: "Entendido",
+          timer: 5000,
+          timerProgressBar: true,
+        });
+      }
     } finally {
       setIsReserving(false);
     }
