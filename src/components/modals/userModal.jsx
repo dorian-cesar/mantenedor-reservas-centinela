@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, User, Mail, Lock, Shield, Building, IdCard } from 'lucide-react';
 import SessionHelper from '@/utils/session';
 
@@ -12,12 +12,11 @@ export default function UserModal({ user, onSave, onClose }) {
         role: 'user',
     });
     const [loading, setLoading] = useState(false);
-
-    const [superUser, setSuperUser] = useState(false)
+    const [superUser, setSuperUser] = useState(false);
+    const passwordRef = useRef(null);
 
     useEffect(() => {
         const currentUser = SessionHelper.getUser();
-        console.log(currentUser?.role)
         setSuperUser(String(currentUser?.role) === "superUser");
     }, []);
 
@@ -30,6 +29,15 @@ export default function UserModal({ user, onSave, onClose }) {
                 rut: user.rut || '',
                 role: user.role || 'user',
             });
+        } else {
+            // crear -> limpiar formulario
+            setFormData({
+                name: '',
+                email: '',
+                password: '',
+                rut: '',
+                role: 'user',
+            });
         }
     }, [user]);
 
@@ -38,11 +46,41 @@ export default function UserModal({ user, onSave, onClose }) {
         setLoading(true);
 
         try {
-            const dataToSend = user
-                ? formData.password
-                    ? formData
-                    : { name: formData.name, email: formData.email, rut: formData.rut, role: formData.role }
-                : formData;
+            // Si estamos creando (no hay `user`) validamos password explícitamente
+            if (!user) {
+                if (!formData.password || formData.password.trim().length < 6) {
+                    // mensaje claro al usuario
+                    alert("La contraseña es obligatoria y debe tener al menos 6 caracteres.");
+                    setLoading(false);
+                    // enfocamos el input de password
+                    if (passwordRef.current) passwordRef.current.focus();
+                    return;
+                }
+            }
+
+            // Construimos el payload de forma explícita:
+            let dataToSend;
+            if (user) {
+                // edición: si se ingresó nueva contraseña la incluimos, sino no
+                dataToSend = {
+                    name: formData.name,
+                    email: formData.email,
+                    rut: formData.rut,
+                    role: formData.role
+                };
+                if (formData.password && formData.password.trim().length >= 6) {
+                    dataToSend.password = formData.password;
+                }
+            } else {
+                // creación: enviamos todo (ya validado)
+                dataToSend = {
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password,
+                    rut: formData.rut,
+                    role: formData.role
+                };
+            }
 
             await onSave(dataToSend);
         } finally {
@@ -51,10 +89,8 @@ export default function UserModal({ user, onSave, onClose }) {
     };
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     return (
@@ -88,6 +124,7 @@ export default function UserModal({ user, onSave, onClose }) {
                                 required
                                 className="w-full pl-11 pr-12 py-3 border-2 border-gray-400 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200"
                                 placeholder="Ej: Juan Pérez"
+                                autoComplete="name"
                             />
                         </div>
                     </div>
@@ -106,6 +143,7 @@ export default function UserModal({ user, onSave, onClose }) {
                                 required
                                 className="w-full pl-11 pr-12 py-3 border-2 border-gray-400 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200"
                                 placeholder="Ej: usuario@ejemplo.com"
+                                autoComplete="email"
                             />
                         </div>
                     </div>
@@ -119,6 +157,7 @@ export default function UserModal({ user, onSave, onClose }) {
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <input
+                                ref={passwordRef}
                                 type="password"
                                 name="password"
                                 value={formData.password}
@@ -132,8 +171,12 @@ export default function UserModal({ user, onSave, onClose }) {
                                         : 'border-gray-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50'}
       `}
                                 placeholder={user ? '• • • • • • • •' : 'Ingresa una contraseña'}
+                                autoComplete={user ? "new-password" : "new-password"}
                             />
                         </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            {user ? (superUser ? 'Deja vacío para mantener la contraseña actual' : 'No puedes cambiar la contraseña') : 'La contraseña debe tener al menos 6 caracteres'}
+                        </p>
                     </div>
 
                     <div>
@@ -150,6 +193,7 @@ export default function UserModal({ user, onSave, onClose }) {
                                 required
                                 className="w-full pl-11 pr-12 py-3 border-2 border-gray-400 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200"
                                 placeholder="Ej: 12345678-9"
+                                autoComplete="off"
                             />
                         </div>
                     </div>
