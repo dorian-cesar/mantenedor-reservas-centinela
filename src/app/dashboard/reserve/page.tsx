@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,6 +104,7 @@ export default function ReservePage() {
   const [citiesMap, setCitiesMap] = useState<Record<string, string[]>>({});
   const [origins, setOrigins] = useState<string[]>([]);
   const [destinations, setDestinations] = useState<string[]>([]);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const loadCities = async () => {
@@ -255,10 +256,18 @@ export default function ReservePage() {
         return;
       }
 
-      // Usar la estructura directamente de la API
       setBusServices(data);
       setSelectedService(null);
       setSelectedSeat(null);
+
+      setTimeout(() => {
+        if (titleRef.current) {
+          titleRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      }, 100);
     } catch (error) {
       console.error(error);
       Swal.fire({
@@ -353,7 +362,16 @@ export default function ReservePage() {
 
       Swal.fire({
         title: "¡Reserva exitosa!",
-        html: `Asiento <strong>${selectedSeat}</strong> confirmado<br>${selectedService.origin} a ${selectedService.destination}<br>Servicio: ${selectedService.serviceName}`,
+        html: `
+          <div class="text-left">
+            <p><strong>Usuario:</strong> ${user.name}</p>
+            <p><strong>Asiento:</strong> ${selectedSeat}</p>
+            <p><strong>Ruta:</strong> ${selectedService.origin} → ${selectedService.destination}</p>
+            <p><strong>Servicio:</strong> ${selectedService.serviceName}</p>
+            <p><strong>Fecha:</strong> ${selectedService.date}</p>
+            <p><strong>Hora:</strong> ${selectedService.template?.time}</p>
+          </div>
+        `,
         icon: "success",
         confirmButtonText: "Perfecto",
         timer: 7000,
@@ -382,7 +400,7 @@ export default function ReservePage() {
 
     service.busLayout.floor1.seatMap.forEach((row) => {
       row.forEach((seat) => {
-        if (seat === "") return; // espacio vacío
+        if (seat === "") return;
 
         const seatData = service.seats.find((s) => s.seatNumber === seat);
         seats.push({
@@ -399,7 +417,6 @@ export default function ReservePage() {
   const renderSeats = (service: BusService) => {
     const seats = generateSeatLayout(service);
 
-    // Agrupar asientos en filas de 4
     const rows: Seat[][] = [];
     for (let i = 0; i < seats.length; i += 4) {
       rows.push(seats.slice(i, i + 4));
@@ -422,7 +439,7 @@ export default function ReservePage() {
                     ? "secondary"
                     : seat.isAvailable
                     ? "outline"
-                    : "destructive"
+                    : "secondary"
                 }
                 className={cn(
                   "h-14 w-14 font-semibold transition-all shrink-0",
@@ -436,14 +453,18 @@ export default function ReservePage() {
                 disabled={!seat.isAvailable || seat.isBathroom}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (seat.isAvailable && !seat.isBathroom)
-                    setSelectedSeat(seat.number);
+                  if (seat.isAvailable && !seat.isBathroom) {
+                    if (selectedSeat === seat.number) {
+                      setSelectedSeat(null);
+                    } else {
+                      setSelectedSeat(seat.number);
+                    }
+                  }
                 }}
               >
                 {seat.isBathroom ? "🚻" : seat.number}
               </Button>
             ))}
-            {/* Rellenar con espacios vacíos si la fila no está completa */}
             {row.length < 4 &&
               Array.from({ length: 4 - row.length }).map((_, index) => (
                 <div key={`empty-${rowIndex}-${index}`} className="w-14 h-14" />
@@ -462,7 +483,7 @@ export default function ReservePage() {
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-balance mb-2">
+          <h1 ref={titleRef} className="text-4xl font-bold text-balance mb-2">
             Reserva tu Asiento
           </h1>
           <p className="text-muted-foreground text-pretty">
@@ -485,8 +506,13 @@ export default function ReservePage() {
                 <CardHeader
                   className="cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => {
-                    setSelectedService(service);
-                    setSelectedSeat(null);
+                    if (selectedService?._id === service._id) {
+                      setSelectedService(null);
+                      setSelectedSeat(null);
+                    } else {
+                      setSelectedService(service);
+                      setSelectedSeat(null);
+                    }
                   }}
                 >
                   <div className="flex justify-between items-start">
@@ -519,7 +545,7 @@ export default function ReservePage() {
                   <CardContent onClick={(e) => e.stopPropagation()}>
                     <div className="pt-4 border-t">
                       <h3 className="font-semibold mb-3 text-center">
-                        Selecciona tu asiento
+                        Selecciona el asiento
                       </h3>
                       <div className="mb-4 text-center text-sm text-muted-foreground">
                         <p>Frente del bus ↑</p>
@@ -531,11 +557,11 @@ export default function ReservePage() {
                           <span>Disponible</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 border rounded bg-destructive opacity-40"></div>
+                          <div className="w-6 h-6 border rounded bg-secondary opacity-40"></div>
                           <span>Ocupado</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 border rounded bg-secondary opacity-60"></div>
+                          <div className="opacity-60">🚻</div>
                           <span>Baño</span>
                         </div>
                       </div>
