@@ -66,8 +66,8 @@ export default function Navbar({ onMenuToggle, className = "" }) {
       "/dashboard/cities": "Origenes y Destinos",
       "/dashboard/reserve": "Reservar Asientos",
       "/dashboard/reports": "Reportes y Exportación",
-      "/messages": "Mensajes",
-      "/calendar": "Calendario",
+      "/dashboard/templates": "Templates",
+      "/dashboard/services": "Gestión de Servicios",
       "/settings": "Configuración",
       "/help": "Ayuda y Soporte",
     };

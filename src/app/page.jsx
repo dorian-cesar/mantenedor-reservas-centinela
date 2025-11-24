@@ -73,7 +73,7 @@ export default function LoginPage() {
         }
         return;
       }
-      showNotification({ type: "error", message: data.mensaje || "Credenciales inválidas" });
+      showNotification({ type: "error", message: data.message || "Credenciales inválidas" });
     } catch (err) {
       console.error("fetch error:", err);
       showNotification({ type: "error", message: "Error al conectar con el servidor" });

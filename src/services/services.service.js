@@ -26,6 +26,99 @@ class ServicesService {
             throw err;
         }
     }
+
+    static async searchServices(origin, destination, date) {
+        try {
+            const res = await fetch(`${API_URL}/services/search?origin=${origin}&destination=${destination}&date=${date}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                throw new Error(txt || 'Error al cargar servicios');
+            }
+
+            const json = await res.json();
+            return json;
+        } catch (err) {
+            console.error('searchServices error:', err);
+            throw err;
+        }
+    }
+
+    static async getGeneratedServices(filters = {}) {
+        try {
+            const {
+                serviceNumber,
+                startDate,
+                endDate,
+                origin,
+                destination,
+                page = 1,
+                limit = 20
+            } = filters;
+
+            // Construir query string
+            const params = new URLSearchParams();
+
+            if (serviceNumber) params.append('serviceNumber', serviceNumber);
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            if (origin) params.append('origin', origin);
+            if (destination) params.append('destination', destination);
+            params.append('page', page.toString());
+            params.append('limit', limit.toString());
+
+            const res = await fetch(`${API_URL}/services/generated?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                throw new Error(txt || 'Error al cargar servicios');
+            }
+
+            const json = await res.json();
+            return json;
+        } catch (err) {
+            console.error('getGeneratedServices error:', err);
+            throw err;
+        }
+    }
+
+    static async deleteGeneratedServices(serviceNumber, fromDate) {
+        try {
+            const res = await fetch(`${API_URL}/services/generated/${serviceNumber}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    fromDate: fromDate,
+                })
+            });
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                throw new Error(txt || 'Error al eliminar servicios');
+            }
+
+            const json = await res.json();
+            return json;
+        } catch (err) {
+            console.error('deleteGeneratedServices error:', err);
+            throw err;
+        }
+    }
 }
 
 export default ServicesService;

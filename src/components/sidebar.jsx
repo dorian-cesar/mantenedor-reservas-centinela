@@ -17,6 +17,7 @@ import {
   LogOut,
   Building2,
   Ticket,
+  Bus
 } from "lucide-react";
 
 export default function Sidebar({ className = "" }) {
@@ -74,6 +75,7 @@ export default function Sidebar({ className = "" }) {
       href: "/dashboard/reports",
     },
     { icon: <Calendar size={20} />, label: "Templates", href: "/dashboard/templates" },
+    { icon: <Bus size={20} />, label: "Servicios", href: "/dashboard/services" },
   ];
 
   const adminBottomMenuItems = [
