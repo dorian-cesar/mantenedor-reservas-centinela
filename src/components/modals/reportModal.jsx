@@ -1,4 +1,5 @@
 import { X as XIcon, ArrowRight } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function ReportModal({ report, loading, onClose }) {
 
@@ -37,6 +38,58 @@ export default function ReportModal({ report, loading, onClose }) {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const exportXLSX = () => {
+        if (!report) return;
+
+        // 1) Construir array de filas (primera fila: headers)
+        const rows = [
+            ["Código Servicio", "Origen", "Destino", "Fecha de Salida", "Hora de salida", "Asiento", "Nombre", "Correo", "Rut"]
+        ];
+
+        report.passengers?.forEach(p => {
+            rows.push([
+                report.serviceInfo?.serviceNumber ?? "",
+                report.serviceInfo?.origin ?? "",
+                report.serviceInfo?.destination ?? "",
+                report.serviceInfo?.date ?? "",
+                report.serviceInfo?.time ?? "",
+                p.seatNumber ?? "",
+                p.passengerName ?? "",
+                p.passengerEmail ?? "",
+                p.passengerRut ?? ""
+            ]);
+        });
+
+        // 2) Convertir a hoja de cálculo
+        const worksheet = XLSX.utils.aoa_to_sheet(rows);
+
+        // (Opcional) ajustar ancho de columnas automáticamente según contenido
+        const colWidths = rows[0].map((_, colIdx) => {
+            const max = rows.reduce((acc, row) => {
+                const cell = row[colIdx] ? String(row[colIdx]) : "";
+                return Math.max(acc, cell.length);
+            }, 10);
+            return { wch: Math.min(Math.max(max, 10), 40) }; // wch = width in characters
+        });
+        worksheet["!cols"] = colWidths;
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Pasajeros");
+
+        // 3) Generar archivo como ArrayBuffer y descargar
+        const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+        const blob = new Blob([wbout], { type: "application/octet-stream" });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `servicio_${report.serviceInfo?.serviceNumber ?? "export"}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -112,6 +165,7 @@ export default function ReportModal({ report, loading, onClose }) {
 
                 <div className="flex justify-end gap-2 p-4 border-t">
                     <button onClick={exportCSV} className="px-4 py-2 rounded-xl border">Exportar (CSV)</button>
+                    <button onClick={exportXLSX} className="px-4 py-2 rounded-xl border">Exportar (XLSX)</button>
                 </div>
             </div>
         </div>

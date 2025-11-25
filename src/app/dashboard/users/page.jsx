@@ -17,6 +17,7 @@ import UserService from "@/services/users.service";
 import UserModal from "@/components/modals/userModal";
 
 import SessionHelper from "@/utils/session";
+import * as XLSX from "xlsx";
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
@@ -183,6 +184,79 @@ export default function UsersPage() {
         }
     };
 
+    const handleExportXLSX = async () => {
+        try {
+            setLoading(true);
+            const res = await UserService.getAllUsers(searchQuery, roleFilter);
+            const allUsers = (res && res.data) ? res.data : [];
+
+            if (!allUsers || allUsers.length === 0) {
+                showNotification("error", "No hay usuarios para exportar");
+                return;
+            }
+
+            const headers = ["_id", "name", "email", "role", "rut", "activo"];
+
+            const headerRow = headers;
+            const rows = [headerRow];
+
+            allUsers.forEach(u => {
+                const row = headers.map(h => {
+                    let val = u[h];
+
+                    if (h === "activo") {
+                        if (typeof val === "boolean") val = val ? "Sí" : "No";
+                        if (val === 1) val = "Sí";
+                        if (val === 0) val = "No";
+                    }
+
+                    if (val === null || val === undefined) val = "";
+                    return String(val);
+                });
+                rows.push(row);
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(rows);
+
+            const colWidths = headerRow.map((_, colIdx) => {
+                const max = rows.reduce((acc, row) => {
+                    const cell = row[colIdx] ? String(row[colIdx]) : "";
+                    return Math.max(acc, cell.length);
+                }, 10);
+                return { wch: Math.min(Math.max(max, 10), 50) }; // limita ancho razonable
+            });
+            worksheet["!cols"] = colWidths;
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Usuarios");
+
+            const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+
+            const blob = new Blob([wbout], { type: "application/octet-stream" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, "0");
+            const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+            a.href = url;
+            a.download = `usuarios_${ts}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showNotification("success", `Exportados ${allUsers.length} usuarios`);
+        } catch (error) {
+            console.error("Error exportando XLSX:", error);
+            showNotification("error", "Error exportando usuarios: " + (error?.message || error));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     const roleBadgeClass = (role) => {
         const r = (role || '').toLowerCase();
         if (r === 'admin' || r === 'superUser') {
@@ -207,6 +281,14 @@ export default function UsersPage() {
                         >
                             <ArrowDownToLine className="h-4 w-4" />
                             <span className="text-sm hidden sm:inline">Exportar (CSV)</span>
+                        </button>
+                        <button
+                            onClick={handleExportXLSX}
+                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
+                            aria-label="Exportar"
+                        >
+                            <ArrowDownToLine className="h-4 w-4" />
+                            <span className="text-sm hidden sm:inline">Exportar (XLSX)</span>
                         </button>
                         <div className="flex items-center gap-2">
                             {superUser && (
@@ -278,7 +360,7 @@ export default function UsersPage() {
                                 <Search className="h-4 w-4" />
                                 <span>Buscar</span>
                             </button>
-                            
+
                             {(searchQuery || roleFilter) && (
                                 <button
                                     type="button"
@@ -298,7 +380,7 @@ export default function UsersPage() {
                             {searchQuery && (
                                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                                     Búsqueda: "{searchQuery}"
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setSearchQuery('');
                                             loadUsers(1, '', roleFilter);
@@ -312,7 +394,7 @@ export default function UsersPage() {
                             {roleFilter && (
                                 <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
                                     Rol: {roleFilter}
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setRoleFilter('');
                                             loadUsers(1, searchQuery, '');
@@ -449,8 +531,8 @@ export default function UsersPage() {
                                 <div className="text-center py-8 hidden md:block">
                                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                                     <p className="text-gray-500">
-                                        {searchQuery || roleFilter 
-                                            ? "No se encontraron usuarios con los filtros aplicados" 
+                                        {searchQuery || roleFilter
+                                            ? "No se encontraron usuarios con los filtros aplicados"
                                             : "No se encontraron usuarios"
                                         }
                                     </p>
