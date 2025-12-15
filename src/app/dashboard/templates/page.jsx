@@ -9,21 +9,60 @@ import {
     Edit,
     Plus,
     XIcon,
-    Check
+    Check,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import Notification from "@/components/notification";
 import TemplateService from "@/services/template.service";
 import TemplateModal from "@/components/modals/templateModal";
 import ServicesService from "@/services/services.service";
 import Swal from "sweetalert2";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function TemplatesPage() {
     const [templates, setTemplates] = useState({});
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState({ type: "", message: "" });
-    const [expandedDays, setExpandedDays] = useState({});
     const [showModal, setShowModal] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
+    const [activeDay, setActiveDay] = useState("lunes");
 
     const dayNames = {
         lunes: "Lunes",
@@ -33,6 +72,16 @@ export default function TemplatesPage() {
         viernes: "Viernes",
         sabado: "Sábado",
         domingo: "Domingo",
+    };
+
+    const dayColors = {
+        lunes: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
+        martes: { bg: "bg-green-50", border: "border-green-200", text: "text-green-700" },
+        miercoles: { bg: "bg-yellow-50", border: "border-yellow-200", text: "text-yellow-700" },
+        jueves: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700" },
+        viernes: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700" },
+        sabado: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700" },
+        domingo: { bg: "bg-pink-50", border: "border-pink-200", text: "text-pink-700" },
     };
 
     const showNotification = (type, message) => {
@@ -49,27 +98,11 @@ export default function TemplatesPage() {
         showNotification("success", "Lista actualizada");
     };
 
-    const toggleDay = (day) => {
-        setExpandedDays((prev) => ({
-            ...prev,
-            [day]: !prev[day],
-        }));
-    };
-
     const loadTemplates = async () => {
         try {
             setLoading(true);
             const res = await TemplateService.getTemplateByDays();
             setTemplates(res || {});
-
-            // Expandir automáticamente los días que tienen templates
-            const initialExpanded = {};
-            Object.keys(res || {}).forEach((day) => {
-                if (res[day] && res[day].length > 0) {
-                    initialExpanded[day] = true;
-                }
-            });
-            setExpandedDays(initialExpanded);
         } catch (error) {
             console.error("Error cargando templates:", error);
             showNotification("error", "Error al cargar templates: " + (error.message || error));
@@ -80,7 +113,19 @@ export default function TemplatesPage() {
 
     const handleToggle = async (template) => {
         const action = template.active ? "desactivar" : "activar";
-        if (!confirm(`Seguro de querer ${action} esta template?`)) return;
+
+        const result = await Swal.fire({
+            title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} template?`,
+            text: `¿Estás seguro de querer ${action} esta plantilla?`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: `Sí, ${action}`,
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+        });
+
+        if (!result.isConfirmed) return;
 
         try {
             await TemplateService.toggleTemplate(template._id);
@@ -118,15 +163,12 @@ export default function TemplatesPage() {
                 setShowModal(false);
                 loadTemplates();
             } else {
-                // Crear template
                 const res = await TemplateService.createTemplate(data);
                 createdId = res._id || res.id;
 
                 showNotification("success", "Template creada correctamente");
 
-                // Usar setTimeout para asegurar que el modal se cierre antes del SweetAlert
                 setTimeout(async () => {
-                    // Preguntar al usuario si quiere crear servicios ahora
                     const result = await Swal.fire({
                         title: "¿Crear servicios ahora?",
                         text: "¿Deseas crear servicios a partir de esta plantilla ahora mismo?",
@@ -139,9 +181,6 @@ export default function TemplatesPage() {
                         reverseButtons: true,
                         allowOutsideClick: false,
                         allowEscapeKey: false,
-                        customClass: {
-                            popup: "rounded-lg"
-                        }
                     });
 
                     if (result.isConfirmed) {
@@ -154,230 +193,249 @@ export default function TemplatesPage() {
                         }
                     }
 
-                    // Recargar templates después de todo el proceso
                     loadTemplates();
-                }, 1500); // Pequeño delay para asegurar el cierre del modal
+                }, 1500);
 
-                // Cerrar modal inmediatamente
                 setShowModal(false);
             }
         } catch (error) {
             console.error("Error guardando template:", error);
             showNotification("error", error?.message || "Error guardando template");
-            setShowModal(false); // Cerrar modal también en caso de error
+            setShowModal(false);
         }
     };
 
-    const getDayColor = (day) => {
-        const colors = {
-            lunes: "bg-blue-50 border-blue-200",
-            martes: "bg-green-50 border-green-200",
-            miercoles: "bg-yellow-50 border-yellow-200",
-            jueves: "bg-purple-50 border-purple-200",
-            viernes: "bg-orange-50 border-orange-200",
-            sabado: "bg-red-50 border-red-200",
-            domingo: "bg-pink-50 border-pink-200",
-        };
-        return colors[day] || "bg-gray-50 border-gray-200";
+    const getDayTemplatesCount = (day) => {
+        return templates[day]?.length || 0;
     };
 
-    const getDayHeaderColor = (day) => {
-        const colors = {
-            lunes: "bg-blue-100 text-blue-800",
-            martes: "bg-green-100 text-green-800",
-            miercoles: "bg-yellow-100 text-yellow-800",
-            jueves: "bg-purple-100 text-purple-800",
-            viernes: "bg-orange-100 text-orange-800",
-            sabado: "bg-red-100 text-red-800",
-            domingo: "bg-pink-100 text-pink-800",
-        };
-        return colors[day] || "bg-gray-100 text-gray-800";
+    const DayTabContent = ({ day }) => {
+        const dayTemplates = templates[day] || [];
+        const colors = dayColors[day] || dayColors.lunes;
+
+        if (loading) {
+            return (
+                <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                        <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                </div>
+            );
+        }
+
+        if (dayTemplates.length === 0) {
+            return (
+                <Card className={`${colors.bg} ${colors.border} border-2`}>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                        <Users className="h-16 w-16 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No hay plantillas para este día</h3>
+                        <p className="text-gray-500 mb-6">Crea una nueva plantilla para comenzar</p>
+                        <Button onClick={handleCreateTemplate} variant="outline">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Nueva plantilla
+                        </Button>
+                    </CardContent>
+                </Card>
+            );
+        }
+
+        return (
+            <div className="space-y-4">
+                <Card>
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Calendar className={`h-5 w-5`} />
+                                <CardTitle>
+                                    {dayNames[day]}
+                                    <Badge variant="outline" className="ml-2 bg-white">
+                                        {dayTemplates.length} servicios
+                                    </Badge>
+                                </CardTitle>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="relative h-[500px] overflow-auto rounded-md border">
+                            <Table className="min-w-[1100px]">
+                                <TableHeader>
+                                    <TableRow className="bg-gray-50 hover:bg-gray-50">
+                                        <TableHead className="w-[100px]">Código</TableHead>
+                                        <TableHead>Nombre</TableHead>
+                                        <TableHead>Origen</TableHead>
+                                        <TableHead>Destino</TableHead>
+                                        <TableHead>Hora</TableHead>
+                                        <TableHead>Empresa</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {dayTemplates.map((template) => (
+                                        <TableRow
+                                            key={template._id}
+                                            className={!template.active ? "bg-gray-100 hover:bg-gray-200" : ""}
+                                        >
+                                            <TableCell className="whitespace-nowrap font-medium">
+                                                <Badge variant="outline" className="bg-white">
+                                                    #{template.serviceNumber}
+                                                </Badge>
+                                            </TableCell>
+
+                                            <TableCell className="max-w-[260px] whitespace-normal break-words">
+                                                <div className="font-medium">{template.serviceName}</div>
+                                            </TableCell>
+
+                                            <TableCell className="max-w-[220px] whitespace-normal break-words">
+                                                <div className="flex items-start gap-2">
+                                                    <MapPin className="h-4 w-4 text-green-600 mt-1 shrink-0" />
+                                                    <span>{template.origin}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="max-w-[220px] whitespace-normal break-words">
+                                                {template.destination}
+                                            </TableCell>
+
+                                            <TableCell className="whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-blue-600" />
+                                                    <span>{template.time}</span>
+                                                </div>
+                                            </TableCell>
+
+                                            <TableCell className="whitespace-nowrap">
+                                                {template.company || (
+                                                    <span className="text-gray-400">-</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                <Badge
+                                                    variant={template.active ? "default" : "secondary"}
+                                                    className={template.active ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"}
+                                                >
+                                                    {template.active ? "Activo" : "Inactivo"}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleEditTemplate(template)}
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Editar plantilla</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleToggle(template)}
+                                                                    className={
+                                                                        template.active
+                                                                            ? "text-red-600 hover:text-red-700 hover:bg-red-100"
+                                                                            : "text-green-600 hover:text-green-700 hover:bg-green-100"
+                                                                    }
+                                                                >
+                                                                    {template.active ? (
+                                                                        <XIcon className="h-4 w-4" />
+                                                                    ) : (
+                                                                        <Check className="h-4 w-4" />
+                                                                    )}
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>{template.active ? "Desactivar" : "Activar"}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                    </CardContent>
+                </Card>
+            </div>
+        );
     };
 
     return (
-        <div className="w-full p-4">
+        <div>
             <Notification type={notification.type} message={notification.message} />
 
             <div className="space-y-6">
-                <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-2xl font-semibold">Plantillas de Servicios</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-3xl font-bold tracking-tight">Plantillas de Servicios</h2>
+                        <p className="text-muted-foreground mt-1">
+                            Gestiona las plantillas de servicios organizadas por día de la semana
+                        </p>
+                    </div>
 
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleCreateTemplate}
-                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-                            aria-label="Nuevo usuario"
-                        >
-                            <Plus className="h-4 w-4" />
-                            <span className="text-sm hidden sm:inline">Nueva template</span>
-                        </button>
-                        <button
-                            onClick={handleRefresh}
-                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-                            aria-label="Refrescar"
-                        >
-                            <RefreshCcw className="h-4 w-4" />
-                            <span className="text-sm hidden sm:inline">Refrescar</span>
-                        </button>
+                        <Button variant="outline" size="sm" onClick={handleRefresh}>
+                            <RefreshCcw className="h-4 w-4 mr-2" />
+                            Refrescar
+                        </Button>
+                        <Button onClick={handleCreateTemplate}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Nueva plantilla
+                        </Button>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-xl overflow-hidden">
-                    {loading ? (
-                        <div className="flex justify-center items-center p-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                        </div>
-                    ) : (
-                        <div className="p-4">
 
-                            {/* Lista de templates por día (estilo tabla parecido a ReportsPage) */}
-                            <div className="space-y-4">
+                <CardContent className="px-0">
+                    <Tabs defaultValue="lunes" value={activeDay} onValueChange={setActiveDay}>
+                        <ScrollArea className="w-full">
+                            <TabsList className="mb-6 h-12 w-full justify-start">
                                 {Object.keys(dayNames).map((day) => (
-                                    <div key={day} className={`border rounded-lg overflow-hidden ${getDayColor(day)}`}>
-                                        {/* Header del día */}
-                                        <button
-                                            onClick={() => toggleDay(day)}
-                                            className={`w-full flex items-center justify-between p-4 ${getDayHeaderColor(day)} hover:opacity-90 transition-opacity`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <Calendar className="h-5 w-5" />
-                                                <span className="font-semibold text-lg">{dayNames[day]}</span>
-                                                <span className="bg-white bg-opacity-50 px-2 py-1 rounded-full text-sm font-medium">
-                                                    {templates[day]?.length || 0} servicios
-                                                </span>
-                                            </div>
-                                            <div className={`transform transition-transform ${expandedDays[day] ? "rotate-180" : ""}`}>
-                                                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                                                    <path d="M5 8.5L10 13.5L15 8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                </svg>
-                                            </div>
-                                        </button>
-
-                                        {/* Contenido del día */}
-                                        {expandedDays[day] && (
-                                            <div className="p-4">
-                                                {!templates[day] || templates[day].length === 0 ? (
-                                                    <div className="text-center py-8 text-gray-500">
-                                                        <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                                                        <p>No hay servicios programados para este día</p>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        {/* Tabla para desktop */}
-                                                        <div className="hidden md:block overflow-x-auto">
-                                                            <table className="min-w-full divide-y divide-gray-200 table-auto text-sm">
-                                                                <thead className="bg-gray-50">
-                                                                    <tr>
-                                                                        <th className="px-2 py-2 text-left text-xs font-bold uppercase">Código</th>
-                                                                        <th className="px-2 py-2 text-left text-xs font-bold uppercase">Nombre</th>
-                                                                        <th className="px-2 py-2 text-left text-xs font-bold uppercase">Origen</th>
-                                                                        <th className="px-2 py-2 text-left text-xs font-bold uppercase">Destino</th>
-                                                                        <th className="px-2 py-2 text-left text-xs font-bold uppercase">Hora</th>
-                                                                        <th className="px-2 py-2 text-left text-xs font-bold uppercase">Empresa</th>
-                                                                        <th className="px-2 py-2 text-left text-xs font-bold uppercase">Acciones</th>
-                                                                    </tr>
-                                                                </thead>
-
-                                                                <tbody className="bg-white divide-y divide-gray-200">
-                                                                    {templates[day].map((template) => (
-                                                                        <tr key={template._id} className={`${template.active ? 'bg-white hover:bg-gray-100' : 'bg-gray-200 hover:bg-gray-300'} align-top transition-colors`}>
-                                                                            <td className="px-2 py-2 whitespace-normal break-words max-w-[80px] text-sm">
-                                                                                <div className="text-sm font-medium text-gray-500">#{template.serviceNumber}</div>
-                                                                            </td>
-
-                                                                            <td className="px-2 py-2 whitespace-normal break-words max-w-[200px] text-sm">
-                                                                                <div className="text-sm font-medium text-gray-900">{template.serviceName}</div>
-                                                                            </td>
-
-                                                                            <td className="px-2 py-2 whitespace-normal break-words max-w-[140px] text-sm">
-                                                                                <div className="flex items-center gap-2 text-sm text-gray-900">
-                                                                                    <MapPin className="h-4 w-4 text-green-600" />
-                                                                                    <span>{template.origin}</span>
-                                                                                </div>
-                                                                            </td>
-
-                                                                            <td className="px-2 py-2 whitespace-normal break-words max-w-[140px] text-sm">
-                                                                                <div className="text-sm text-gray-900">{template.destination}</div>
-                                                                            </td>
-
-                                                                            <td className="px-2 py-2 whitespace-normal text-sm">
-                                                                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                                                    <Clock className="h-4 w-4 text-blue-600" />
-                                                                                    <span>{template.time}</span>
-                                                                                </div>
-                                                                            </td>
-
-                                                                            <td className="px-2 py-2 whitespace-normal text-sm text-gray-500">
-                                                                                {template.company || "-"}
-                                                                            </td>
-
-                                                                            <td className="px-2 py-2 whitespace-normal text-sm">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <button
-                                                                                        onClick={() => { handleEditTemplate(template) }}
-                                                                                        className="bg-blue-200 text-blue-700 p-2 rounded-full hover:bg-blue-300"
-                                                                                        title="Editar"
-                                                                                    >
-                                                                                        <Edit className="h-4 w-4" />
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => handleToggle(template)}
-                                                                                        className={`${template.active ? 'text-red-600 hover:text-red-900 bg-red-200' : 'text-blue-600 hover:text-blue-900 bg-blue-200'} p-2 rounded-full cursor-pointer`}
-                                                                                    >
-                                                                                        {template.active ? <XIcon className="h-5 w-5" /> : <Check className="h-5 w-5" />}
-                                                                                    </button>
-                                                                                </div>
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-
-                                                        {/* Lista móvil */}
-                                                        <div className="md:hidden space-y-3">
-                                                            {templates[day].map((template) => (
-                                                                <div key={template._id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                                                                    <div className="flex justify-between items-start mb-2">
-                                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                                            #{template.serviceNumber}
-                                                                        </span>
-                                                                        <span className="text-sm text-gray-500">{template.time}</span>
-                                                                    </div>
-
-                                                                    <h3 className="font-semibold text-gray-900 mb-2">{template.serviceName}</h3>
-
-                                                                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                                                                        <MapPin className="h-4 w-4 text-green-600" />
-                                                                        <span>{template.origin} → {template.destination}</span>
-                                                                    </div>
-
-                                                                    <div className="text-sm text-gray-500">
-                                                                        {template.company || ""}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <TabsTrigger
+                                        key={day}
+                                        value={day}
+                                        className="relative h-10 px-4 data-[state=active]:shadow-none"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span>{dayNames[day]}</span>
+                                            {getDayTemplatesCount(day) > 0 && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-1 h-5 w-5 rounded-full p-0 text-xs"
+                                                >
+                                                    {getDayTemplatesCount(day)}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </TabsTrigger>
                                 ))}
-                            </div>
+                            </TabsList>
+                        </ScrollArea>
 
-                            {/* Mensaje cuando no hay templates en ningún día */}
-                            {Object.values(templates).every((dayTemplates) => !dayTemplates || dayTemplates.length === 0) && (
-                                <div className="text-center py-12">
-                                    <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay plantillas de servicios</h3>
-                                    <p className="text-gray-500">No se encontraron servicios programados para ningún día.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
+                        {Object.keys(dayNames).map((day) => (
+                            <TabsContent key={day} value={day} className="mt-0">
+                                <DayTabContent day={day} />
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                </CardContent>
             </div>
+
+            {/* Modal */}
             {showModal && (
                 <TemplateModal
                     template={editingTemplate}
