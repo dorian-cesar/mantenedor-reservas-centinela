@@ -27,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { es } from "date-fns/locale"
 import {
     ToggleGroup,
     ToggleGroupItem,
@@ -169,6 +170,12 @@ export default function TemplateModal({ template, onSave, onClose }) {
         return `${hours}:${minutes}`;
     };
 
+    const isPastDay = (date) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return date < today;
+      };
+
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
@@ -306,6 +313,7 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                         <PopoverContent className="w-auto p-0" align="start">
                                             <CalendarComponent
                                                 mode="single"
+                                                locale={es}
                                                 selected={formData.startDate}
                                                 onSelect={(date) => {
                                                     if (!date) return;
@@ -316,7 +324,7 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                                     setOpen(false);
                                                 }}
                                                 initialFocus
-                                                disabled={(date) => date < new Date()}
+                                                disabled={isPastDay}
                                             />
                                         </PopoverContent>
                                     </Popover>
