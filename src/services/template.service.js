@@ -38,7 +38,7 @@ class TemplateService {
 
     static async getTemplateByDays() {
         try {
-            const res = await fetch(`${API_URL}/templates/byDay`, {
+            const res = await fetch(`${API_URL}/templates/byDay?activeOnly=true`, {
                 method: "GET",
                 headers: {
                     "Authorization": `Bearer ${SessionHelper.getToken()}`,
@@ -113,6 +113,21 @@ class TemplateService {
         if (!res.ok) {
             const txt = await res.text().catch(() => null);
             throw new Error(txt || "Error al eliminar template");
+        }
+        return await res.json();
+    }
+
+    static async toggleTemplate(id) {
+        const res = await fetch(`${API_URL}/templates/${id}/toggle`, {
+            method: "PATCH",
+            headers: {
+                "Authorization": `Bearer ${SessionHelper.getToken()}`,
+                "Content-Type": "application/json"
+            }
+        });
+        if (!res.ok) {
+            const txt = await res.text().catch(() => null);
+            throw new Error(txt || "Error al editar template");
         }
         return await res.json();
     }

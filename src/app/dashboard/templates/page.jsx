@@ -78,19 +78,25 @@ export default function TemplatesPage() {
         }
     };
 
-    const handleDeleteTemplate = async (templateId) => {
+    const handleToggle = async (template) => {
+        const action = template.active ? "desactivar" : "activar";
+        if (!confirm(`Seguro de querer ${action} esta template?`)) return;
+
         try {
-            if (!confirm("¿Estás seguro de que deseas eliminar esta template? Esta acción no se puede deshacer.")) {
-                return;
-            }
-            await TemplateService.deleteTemplate(templateId);
-            showNotification("success", "Template eliminada correctamente");
+            await TemplateService.toggleTemplate(template._id);
+            showNotification(
+                "success",
+                `Template ${template.active ? "desactivada" : "activada"} correctamente`
+            );
             loadTemplates();
         } catch (error) {
-            console.error("Error eliminando template:", error);
-            showNotification("error", "Error al eliminar template: " + (error.message || error));
+            console.error(`Error ${action} template:`, error);
+            showNotification(
+                "error",
+                `Error al ${action} template: ` + (error.message || error)
+            );
         }
-    }
+    };
 
     const handleEditTemplate = (template) => {
         setEditingTemplate(template);
@@ -316,7 +322,7 @@ export default function TemplatesPage() {
                                                                                         <Edit className="h-4 w-4" />
                                                                                     </button>
                                                                                     <button
-                                                                                        onClick={() => handleDeleteTemplate(template._id)}
+                                                                                        onClick={() => handleToggle(template)}
                                                                                         className="text-red-600 hover:text-red-900 bg-red-200 p-2 rounded-full cursor-pointer"
                                                                                         aria-label={`Eliminar ${template.serviceName}`}
                                                                                         title={`Eliminar ${template.serviceName}`}
