@@ -36,9 +36,9 @@ class TemplateService {
         }
     }
 
-    static async getTemplateByDays() {
+    static async getTemplateByDays(active = false) {
         try {
-            const res = await fetch(`${API_URL}/templates/byDay?activeOnly=true`, {
+            const res = await fetch(`${API_URL}/templates/byDay${active ? '?activeOnly=true' : ''}`, {
                 method: "GET",
                 headers: {
                     "Authorization": `Bearer ${SessionHelper.getToken()}`,
