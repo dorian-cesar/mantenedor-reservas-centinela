@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
     RefreshCcw,
     Users,
@@ -10,8 +10,8 @@ import {
     Plus,
     XIcon,
     Check,
-    ChevronLeft,
-    ChevronRight
+    Search,
+    X
 } from "lucide-react";
 import Notification from "@/components/notification";
 import TemplateService from "@/services/template.service";
@@ -48,13 +48,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
 
 export default function TemplatesPage() {
     const [templates, setTemplates] = useState({});
@@ -63,6 +59,10 @@ export default function TemplatesPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState(null);
     const [activeDay, setActiveDay] = useState("lunes");
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+
+
 
     const dayNames = {
         lunes: "Lunes",
@@ -209,8 +209,27 @@ export default function TemplatesPage() {
         return templates[day]?.length || 0;
     };
 
+    const filteredTemplatesByDay = useMemo(() => {
+        if (!searchQuery) return templates;
+
+        const q = searchQuery.toLowerCase();
+        const result = {};
+
+        Object.keys(templates).forEach((day) => {
+            result[day] = (templates[day] || []).filter(t =>
+                t.serviceNumber?.toString().includes(q) ||
+                t.serviceName?.toLowerCase().includes(q) ||
+                t.origin?.toLowerCase().includes(q) ||
+                t.destination?.toLowerCase().includes(q) ||
+                t.company?.toLowerCase().includes(q)
+            );
+        });
+
+        return result;
+    }, [templates, searchQuery]);
+
     const DayTabContent = ({ day }) => {
-        const dayTemplates = templates[day] || [];
+        const filteredTemplates = filteredTemplatesByDay[day] || [];
         const colors = dayColors[day] || dayColors.lunes;
 
         if (loading) {
@@ -223,17 +242,12 @@ export default function TemplatesPage() {
             );
         }
 
-        if (dayTemplates.length === 0) {
+        if (filteredTemplates.length === 0) {
             return (
                 <Card className={`${colors.bg} ${colors.border} border-2`}>
-                    <CardContent className="flex flex-col items-center justify-center py-12">
+                    <CardContent className="flex flex-col items-center py-12">
                         <Users className="h-16 w-16 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No hay plantillas para este día</h3>
-                        <p className="text-gray-500 mb-6">Crea una nueva plantilla para comenzar</p>
-                        <Button onClick={handleCreateTemplate} variant="outline">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Nueva plantilla
-                        </Button>
+                        <p className="text-gray-500">No hay resultados</p>
                     </CardContent>
                 </Card>
             );
@@ -241,18 +255,29 @@ export default function TemplatesPage() {
 
         return (
             <div className="space-y-4">
-                <Card>
                     <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-2">
                                 <Calendar className={`h-5 w-5`} />
                                 <CardTitle>
                                     {dayNames[day]}
                                     <Badge variant="outline" className="ml-2 bg-white">
-                                        {dayTemplates.length} servicios
+                                        {filteredTemplates.length} de {filteredTemplates.length} plantillas
                                     </Badge>
                                 </CardTitle>
                             </div>
+
+                            {filteredTemplates.length === 0 && searchTerm && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSearchTerm("")}
+                                    className="gap-2"
+                                >
+                                    <X className="h-4 w-4" />
+                                    Limpiar filtro
+                                </Button>
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -271,114 +296,133 @@ export default function TemplatesPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {dayTemplates.map((template) => (
-                                        <TableRow
-                                            key={template._id}
-                                            className={!template.active ? "bg-gray-100 hover:bg-gray-200" : ""}
-                                        >
-                                            <TableCell className="whitespace-nowrap font-medium">
-                                                <Badge variant="outline" className="bg-white">
-                                                    #{template.serviceNumber}
-                                                </Badge>
-                                            </TableCell>
-
-                                            <TableCell className="max-w-[260px] whitespace-normal break-words">
-                                                <div className="font-medium">{template.serviceName}</div>
-                                            </TableCell>
-
-                                            <TableCell className="max-w-[220px] whitespace-normal break-words">
-                                                <div className="flex items-start gap-2">
-                                                    <MapPin className="h-4 w-4 text-green-600 mt-1 shrink-0" />
-                                                    <span>{template.origin}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="max-w-[220px] whitespace-normal break-words">
-                                                {template.destination}
-                                            </TableCell>
-
-                                            <TableCell className="whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <Clock className="h-4 w-4 text-blue-600" />
-                                                    <span>{template.time}</span>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="whitespace-nowrap">
-                                                {template.company || (
-                                                    <span className="text-gray-400">-</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="whitespace-nowrap">
-                                                <Badge
-                                                    variant={template.active ? "default" : "secondary"}
-                                                    className={template.active ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"}
-                                                >
-                                                    {template.active ? "Activo" : "Inactivo"}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="whitespace-nowrap text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleEditTemplate(template)}
-                                                                >
-                                                                    <Edit className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>Editar plantilla</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleToggle(template)}
-                                                                    className={
-                                                                        template.active
-                                                                            ? "text-red-600 hover:text-red-700 hover:bg-red-100"
-                                                                            : "text-green-600 hover:text-green-700 hover:bg-green-100"
-                                                                    }
-                                                                >
-                                                                    {template.active ? (
-                                                                        <XIcon className="h-4 w-4" />
-                                                                    ) : (
-                                                                        <Check className="h-4 w-4" />
-                                                                    )}
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <p>{template.active ? "Desactivar" : "Activar"}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
+                                    {filteredTemplates.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="text-center py-8">
+                                                <div className="flex flex-col items-center justify-center space-y-2">
+                                                    <Search className="h-12 w-12 text-gray-300" />
+                                                    <p className="text-gray-500">No se encontraron plantillas que coincidan con "{searchTerm}"</p>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setSearchTerm("")}
+                                                        className="mt-2"
+                                                    >
+                                                        Limpiar búsqueda
+                                                    </Button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                    ) : (
+                                        filteredTemplates.map((template) => (
+                                            <TableRow
+                                                key={template._id}
+                                                className={!template.active ? "bg-gray-100 hover:bg-gray-200" : ""}
+                                            >
+                                                <TableCell className="whitespace-nowrap font-medium">
+                                                    <Badge variant="outline" className="bg-white">
+                                                        #{template.serviceNumber}
+                                                    </Badge>
+                                                </TableCell>
+
+                                                <TableCell className="max-w-[260px] whitespace-normal break-words">
+                                                    <div className="font-medium">{template.serviceName}</div>
+                                                </TableCell>
+
+                                                <TableCell className="max-w-[220px] whitespace-normal break-words">
+                                                    <div className="flex items-start gap-2">
+                                                        <MapPin className="h-4 w-4 text-green-600 mt-1 shrink-0" />
+                                                        <span>{template.origin}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="max-w-[220px] whitespace-normal break-words">
+                                                    {template.destination}
+                                                </TableCell>
+
+                                                <TableCell className="whitespace-nowrap">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-4 w-4 text-blue-600" />
+                                                        <span>{template.time}</span>
+                                                    </div>
+                                                </TableCell>
+
+                                                <TableCell className="whitespace-nowrap">
+                                                    {template.company || (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    <Badge
+                                                        variant={template.active ? "default" : "secondary"}
+                                                        className={template.active ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"}
+                                                    >
+                                                        {template.active ? "Activo" : "Inactivo"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="whitespace-nowrap text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleEditTemplate(template)}
+                                                                    >
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Editar plantilla</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleToggle(template)}
+                                                                        className={
+                                                                            template.active
+                                                                                ? "text-red-600 hover:text-red-700 hover:bg-red-100"
+                                                                                : "text-green-600 hover:text-green-700 hover:bg-green-100"
+                                                                        }
+                                                                    >
+                                                                        {template.active ? (
+                                                                            <XIcon className="h-4 w-4" />
+                                                                        ) : (
+                                                                            <Check className="h-4 w-4" />
+                                                                        )}
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>{template.active ? "Desactivar" : "Activar"}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
 
                     </CardContent>
-                </Card>
             </div>
         );
     };
 
     return (
-        <div>
+        <div className="container mx-auto py-6 space-y-6">
             <Notification type={notification.type} message={notification.message} />
 
             <div className="space-y-6">
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight">Plantillas de Servicios</h2>
@@ -399,40 +443,96 @@ export default function TemplatesPage() {
                     </div>
                 </div>
 
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex flex-col space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="search" className="text-sm font-medium">
+                                    Buscar plantillas
+                                </Label>
+                            </div>
+                            <div className="relative flex gap-5 items-center">
+                                <Input
+                                    placeholder="Buscar servicio..."
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            setSearchQuery(searchInput.trim());
+                                        }
+                                    }}
+                                />
 
-                <CardContent className="px-0">
-                    <Tabs defaultValue="lunes" value={activeDay} onValueChange={setActiveDay}>
-                        <ScrollArea className="w-full">
-                            <TabsList className="mb-6 h-12 w-full justify-start">
-                                {Object.keys(dayNames).map((day) => (
-                                    <TabsTrigger
-                                        key={day}
-                                        value={day}
-                                        className="relative h-10 px-4 data-[state=active]:shadow-none"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <span>{dayNames[day]}</span>
-                                            {getDayTemplatesCount(day) > 0 && (
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="ml-1 h-5 w-5 rounded-full p-0 text-xs"
-                                                >
-                                                    {getDayTemplatesCount(day)}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        </ScrollArea>
+                                <Button onClick={() => setSearchQuery(searchInput.trim())}>
+                                    Buscar
+                                </Button>
 
-                        {Object.keys(dayNames).map((day) => (
-                            <TabsContent key={day} value={day} className="mt-0">
-                                <DayTabContent day={day} />
-                            </TabsContent>
-                        ))}
-                    </Tabs>
-                </CardContent>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setSearchInput("");
+                                        setSearchQuery("");
+                                    }}
+                                >
+                                    Limpiar
+                                </Button>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                Filtra plantillas por número (#), nombre, origen, destino o empresa
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-6">
+                        <Tabs defaultValue="lunes" value={activeDay} onValueChange={setActiveDay}>
+                            <ScrollArea className="w-full">
+                                <TabsList className="mb-6 h-12 w-full justify-start">
+                                    {Object.keys(dayNames).map((day) => {
+                                        const dayTemplates = templates[day] || [];
+                                        const totalCount = templates[day]?.length || 0;
+                                        const filteredCount = filteredTemplatesByDay[day]?.length || 0;
+
+                                        return (
+                                            <TabsTrigger
+                                                key={day}
+                                                value={day}
+                                                className="relative h-10 px-4 data-[state=active]:shadow-none"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span>{dayNames[day]}</span>
+                                                    {totalCount > 0 && (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="ml-1 h-5 min-w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                                                        >
+                                                            {searchInput ? (
+                                                                <>
+                                                                    <span className="text-green-600">{filteredCount}</span>
+                                                                    <span className="text-gray-400">/</span>
+                                                                    <span>{totalCount}</span>
+                                                                </>
+                                                            ) : (
+                                                                totalCount
+                                                            )}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </TabsTrigger>
+                                        );
+                                    })}
+                                </TabsList>
+                            </ScrollArea>
+
+                            {Object.keys(dayNames).map((day) => (
+                                <TabsContent key={day} value={day} className="mt-0">
+                                    <DayTabContent day={day} />
+                                </TabsContent>
+                            ))}
+                        </Tabs>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Modal */}
