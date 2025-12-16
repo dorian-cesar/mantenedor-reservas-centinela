@@ -10,14 +10,65 @@ import {
     XIcon,
     Plus,
     ArrowDownToLine,
-    Search
+    Search,
+    Filter,
+    Loader2,
+    Shield,
+    Mail,
+    User as UserIcon,
+    FileText,
+    Download
 } from 'lucide-react';
 import Notification from '@/components/notification';
 import UserService from "@/services/users.service";
 import UserModal from "@/components/modals/userModal";
-
 import SessionHelper from "@/utils/session";
 import * as XLSX from "xlsx";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import {
+    Tabs,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
@@ -33,7 +84,7 @@ export default function UsersPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
-    const [roleFilter, setRoleFilter] = useState('');
+    const [roleFilter, setRoleFilter] = useState('all');
 
     const showNotification = (type, message) => {
         setNotification({ type, message });
@@ -47,9 +98,10 @@ export default function UsersPage() {
     }, [page]);
 
     const loadUsers = async (page = 1, query = searchQuery, role = roleFilter) => {
+        const normalizedRole = role === 'all' ? '' : role;
         try {
             setLoading(true);
-            const res = await UserService.getUsers(page, 10, query, role);
+            const res = await UserService.getUsers(page, 10, query, normalizedRole);
             setUsers(res.data);
             setTotal(res.pagination.total);
             setTotalPages(res.pagination.totalPages);
@@ -67,18 +119,11 @@ export default function UsersPage() {
         loadUsers(1, searchQuery, roleFilter);
     };
 
-    const handleRoleFilterChange = (e) => {
-        const role = e.target.value;
-        setRoleFilter(role);
-        setPage(1);
-        loadUsers(1, searchQuery, role);
-    };
-
     const handleClearFilters = () => {
         setSearchQuery('');
-        setRoleFilter('');
+        setRoleFilter('all');
         setPage(1);
-        loadUsers(1, '', '');
+        loadUsers(1, '', 'all');
     };
 
     const handleNextPage = () => {
@@ -104,25 +149,16 @@ export default function UsersPage() {
         setShowModal(true);
     };
 
-    const handleDesactiveUser = async (user) => {
+    const handleToggleUserStatus = async (user) => {
         try {
-            await UserService.activeUser(user._id, { "activo": false });
-            showNotification('success', `Usuario ${user.name} desactivado correctamente`);
+            const newStatus = !user.activo;
+            await UserService.activeUser(user._id, { "activo": newStatus });
+            showNotification('success', `Usuario ${user.name} ${newStatus ? 'activado' : 'desactivado'} correctamente`);
             loadUsers(page, searchQuery, roleFilter);
         } catch (error) {
             showNotification('error', error.message);
         }
-    }
-
-    const handleActiveUser = async (user) => {
-        try {
-            await UserService.activeUser(user._id, { "activo": true });
-            showNotification('success', `Usuario ${user.name} activado correctamente`);
-            loadUsers(page, searchQuery, roleFilter);
-        } catch (error) {
-            showNotification('error', error.message);
-        }
-    }
+    };
 
     const handleSaveUser = async (userData) => {
         try {
@@ -140,51 +176,7 @@ export default function UsersPage() {
         }
     };
 
-    const handleExportCSV = async () => {
-        try {
-            setLoading(true);
-            // Exportar con filtros aplicados
-            const res = await UserService.getAllUsers(searchQuery, roleFilter);
-            const allUsers = (res && res.data) ? res.data : [];
-
-            if (!allUsers || allUsers.length === 0) {
-                showNotification("error", "No hay usuarios para exportar");
-                return;
-            }
-
-            const headers = ["_id", "name", "email", "role", "rut", "activo"];
-
-            const csvRows = [
-                headers.join(","),
-                ...allUsers.map(u =>
-                    headers.map(h => {
-                        const val = u[h];
-                        return `"${String(val ?? "").replace(/"/g, '""')}"`;
-                    }).join(",")
-                )
-            ];
-
-            const csvContent = csvRows.join("\n");
-            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute("download", `usuarios_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            showNotification("success", `Exportados ${allUsers.length} usuarios`);
-        } catch (error) {
-            console.error("Error exportando CSV:", error);
-            showNotification("error", "Error exportando usuarios: " + (error.message || error));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleExportXLSX = async () => {
+    const handleExport = async (format) => {
         try {
             setLoading(true);
             const res = await UserService.getAllUsers(searchQuery, roleFilter);
@@ -195,393 +187,436 @@ export default function UsersPage() {
                 return;
             }
 
-            const headers = ["_id", "name", "email", "role", "rut", "activo"];
+            if (format === 'csv') {
+                const headers = ["_id", "name", "email", "role", "rut", "activo"];
+                const csvRows = [
+                    headers.join(","),
+                    ...allUsers.map(u =>
+                        headers.map(h => {
+                            const val = u[h];
+                            return `"${String(val ?? "").replace(/"/g, '""')}"`;
+                        }).join(",")
+                    )
+                ];
 
-            const headerRow = headers;
-            const rows = [headerRow];
+                const csvContent = csvRows.join("\n");
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute("download", `usuarios_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            } else if (format === 'xlsx') {
+                const headers = ["_id", "name", "email", "role", "rut", "activo"];
+                const rows = [headers];
 
-            allUsers.forEach(u => {
-                const row = headers.map(h => {
-                    let val = u[h];
-
-                    if (h === "activo") {
-                        if (typeof val === "boolean") val = val ? "Sí" : "No";
-                        if (val === 1) val = "Sí";
-                        if (val === 0) val = "No";
-                    }
-
-                    if (val === null || val === undefined) val = "";
-                    return String(val);
+                allUsers.forEach(u => {
+                    const row = headers.map(h => {
+                        let val = u[h];
+                        if (h === "activo") {
+                            if (typeof val === "boolean") val = val ? "Sí" : "No";
+                            if (val === 1) val = "Sí";
+                            if (val === 0) val = "No";
+                        }
+                        if (val === null || val === undefined) val = "";
+                        return String(val);
+                    });
+                    rows.push(row);
                 });
-                rows.push(row);
-            });
 
-            const worksheet = XLSX.utils.aoa_to_sheet(rows);
+                const worksheet = XLSX.utils.aoa_to_sheet(rows);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Usuarios");
+                const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+                const blob = new Blob([wbout], { type: "application/octet-stream" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `usuarios_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
 
-            const colWidths = headerRow.map((_, colIdx) => {
-                const max = rows.reduce((acc, row) => {
-                    const cell = row[colIdx] ? String(row[colIdx]) : "";
-                    return Math.max(acc, cell.length);
-                }, 10);
-                return { wch: Math.min(Math.max(max, 10), 50) }; // limita ancho razonable
-            });
-            worksheet["!cols"] = colWidths;
-
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Usuarios");
-
-            const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-
-            const blob = new Blob([wbout], { type: "application/octet-stream" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-
-            const now = new Date();
-            const pad = (n) => String(n).padStart(2, "0");
-            const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-
-            a.href = url;
-            a.download = `usuarios_${ts}.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            showNotification("success", `Exportados ${allUsers.length} usuarios`);
+            showNotification("success", `Exportados ${allUsers.length} usuarios en formato ${format.toUpperCase()}`);
         } catch (error) {
-            console.error("Error exportando XLSX:", error);
-            showNotification("error", "Error exportando usuarios: " + (error?.message || error));
+            console.error(`Error exportando ${format}:`, error);
+            showNotification("error", `Error exportando usuarios: ${error.message || error}`);
         } finally {
             setLoading(false);
         }
     };
 
-
-    const roleBadgeClass = (role) => {
+    const getRoleBadgeVariant = (role) => {
         const r = (role || '').toLowerCase();
-        if (r === 'admin' || r === 'superUser') {
-            return 'bg-blue-200 text-blue-800';
-        }
-        return 'bg-gray-200 text-black';
+        if (r === 'admin' || r === 'superuser') return 'default';
+        if (r === 'user') return 'secondary';
+        return 'outline';
+    };
+
+    const getStatusBadgeVariant = (activo) => {
+        return activo ? 'default' : 'destructive';
+    };
+
+    const getStatusText = (activo) => {
+        return activo ? 'Activo' : 'Inactivo';
+    };
+
+    const activeFiltersCount = () => {
+        let count = 0;
+        if (searchQuery) count++;
+        if (roleFilter) count++;
+        return count;
     };
 
     return (
-        <div className="w-full p-4">
+        <div className="container mx-auto py-6 space-y-6">
             <Notification type={notification.type} message={notification.message} />
 
-            <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-xl font-semibold">Usuarios</h2>
-
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleExportCSV}
-                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-                            aria-label="Exportar"
-                        >
-                            <ArrowDownToLine className="h-4 w-4" />
-                            <span className="text-sm hidden sm:inline">Exportar (CSV)</span>
-                        </button>
-                        <button
-                            onClick={handleExportXLSX}
-                            className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-                            aria-label="Exportar"
-                        >
-                            <ArrowDownToLine className="h-4 w-4" />
-                            <span className="text-sm hidden sm:inline">Exportar (XLSX)</span>
-                        </button>
-                        <div className="flex items-center gap-2">
-                            {superUser && (
-                                <button
-                                    onClick={handleCreateUser}
-                                    className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-                                    aria-label="Nuevo usuario"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    <span className="text-sm hidden sm:inline">Nuevo Usuario</span>
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleRefresh}
-                                className="flex items-center gap-2 bg-white border px-3 py-2 rounded-xl shadow-sm hover:shadow-md cursor-pointer"
-                                aria-label="Refrescar"
-                            >
-                                <RefreshCcw className="h-4 w-4" />
-                                <span className="text-sm hidden sm:inline">Refrescar</span>
-                            </button>
-                        </div>
-                    </div>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
+                    <p className="text-muted-foreground mt-1">
+                        Administra los usuarios del sistema y sus permisos
+                    </p>
                 </div>
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                                <Download className="h-4 w-4" />
+                                Exportar
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleExport('csv')}>
+                                <FileText className="h-4 w-4 mr-2" />
+                                Exportar CSV
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                                <FileText className="h-4 w-4 mr-2" />
+                                Exportar Excel
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {superUser && (
+                        <Button onClick={handleCreateUser} className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Nuevo Usuario
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={handleRefresh} className="gap-2">
+                        <RefreshCcw className="h-4 w-4" />
+                        Actualizar
+                    </Button>
+                </div>
+            </div>
 
-                {/* Filtros de Búsqueda */}
-                <div className="bg-white rounded-xl shadow p-4 md:p-6">
-                    <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        {/* Búsqueda por nombre, email o RUT */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Buscar (nombre, email o RUT)
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Ej: 12345678-9"
-                                    className="w-full border rounded-lg px-3 py-2 pl-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            {/* Filtros */}
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-5 w-5 text-primary" />
+                        <CardTitle>Filtros de búsqueda</CardTitle>
+                    </div>
+                    <CardDescription>
+                        Filtra usuarios por diferentes criterios
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSearch} className="space-y-4">
+                        <div className="flex items-end justify-between">
+                            <div className="flex gap-10">
+                                <div className="space-y-2">
+                                    <Label htmlFor="search">Buscar usuario</Label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="search"
+                                            placeholder="Nombre, email o RUT..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="pl-10"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="role">Rol</Label>
+                                    <Select value={roleFilter} onValueChange={setRoleFilter} className="mb-0">
+                                        <SelectTrigger className="mb-0">
+                                            <SelectValue placeholder="Todos los roles" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Todos los roles</SelectItem>
+                                            <SelectItem value="user">Usuario</SelectItem>
+                                            <SelectItem value="admin">Administrador</SelectItem>
+                                            <SelectItem value="superUser">Super Usuario</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="flex items-end gap-2">
+                                <Button type="submit" className="gap-2 flex-1">
+                                    <Search className="h-4 w-4" />
+                                    Buscar
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleClearFilters}
+                                    className="gap-2"
+                                >
+                                    <XIcon className="h-4 w-4" />
+                                    Limpiar
+                                </Button>
                             </div>
                         </div>
 
-                        {/* Filtro por rol */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                Filtrar por rol
-                            </label>
-                            <select
-                                value={roleFilter}
-                                onChange={handleRoleFilterChange}
-                                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="">Todos los roles</option>
-                                <option value="user">Usuario</option>
-                                <option value="admin">Administrador</option>
-                            </select>
-                        </div>
-
-                        {/* Acciones */}
-                        <div className="flex gap-2">
-                            <button
-                                type="submit"
-                                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 flex items-center justify-center gap-2"
-                            >
-                                <Search className="h-4 w-4" />
-                                <span>Buscar</span>
-                            </button>
-
-                            {(searchQuery || roleFilter) && (
-                                <button
-                                    type="button"
-                                    onClick={handleClearFilters}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                    <XIcon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Limpiar</span>
-                                </button>
-                            )}
-                        </div>
+                        {activeFiltersCount() > 0 && (
+                            <div className="pt-2">
+                                <Separator className="mb-4" />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">Filtros activos:</span>
+                                        <div className="flex flex-wrap gap-2">
+                                            {searchQuery && (
+                                                <Badge variant="secondary" className="gap-1">
+                                                    <Search className="h-3 w-3" />
+                                                    "{searchQuery}"
+                                                    <button
+                                                        onClick={() => {
+                                                            setSearchQuery('');
+                                                            loadUsers(1, '', roleFilter);
+                                                        }}
+                                                        className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
+                                                    >
+                                                        <XIcon className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            )}
+                                            {roleFilter && (
+                                                <Badge variant="secondary" className="gap-1">
+                                                    <Shield className="h-3 w-3" />
+                                                    {roleFilter}
+                                                    <button
+                                                        onClick={() => {
+                                                            setRoleFilter('');
+                                                            loadUsers(1, searchQuery, '',);
+                                                        }}
+                                                        className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
+                                                    >
+                                                        <XIcon className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </form>
+                </CardContent>
+            </Card>
 
-                    {/* Mostrar filtros activos */}
-                    {(searchQuery || roleFilter) && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {searchQuery && (
-                                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                    Búsqueda: "{searchQuery}"
-                                    <button
-                                        onClick={() => {
-                                            setSearchQuery('');
-                                            loadUsers(1, '', roleFilter);
-                                        }}
-                                        className="hover:bg-blue-200 rounded-full p-0.5"
-                                    >
-                                        <XIcon className="h-3 w-3" />
-                                    </button>
-                                </span>
-                            )}
-                            {roleFilter && (
-                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                                    Rol: {roleFilter}
-                                    <button
-                                        onClick={() => {
-                                            setRoleFilter('');
-                                            loadUsers(1, searchQuery, '');
-                                        }}
-                                        className="hover:bg-green-200 rounded-full p-0.5"
-                                    >
-                                        <XIcon className="h-3 w-3" />
-                                    </button>
-                                </span>
-                            )}
+            {/* Resultados y tabla */}
+            <Card>
+                <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle>Usuarios ({total})</CardTitle>
+                            <CardDescription>
+                                {users.length > 0 ? (
+                                    <>Mostrando {(page - 1) * limit + 1} - {Math.min(page * limit, total)} de {total} usuarios</>
+                                ) : (
+                                    "No hay usuarios para mostrar"
+                                )}
+                            </CardDescription>
                         </div>
-                    )}
-                </div>
-
-                {/* Tabla de usuarios */}
-                <div className="bg-white rounded-xl shadow-xl overflow-hidden">
+                    </div>
+                </CardHeader>
+                <CardContent>
                     {loading ? (
-                        <div className="flex justify-center items-center p-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                        <div className="space-y-4">
+                            {[...Array(5)].map((_, i) => (
+                                <div key={i} className="flex items-center space-x-4">
+                                    <Skeleton className="h-12 w-12 rounded-full" />
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-4 w-[250px]" />
+                                        <Skeleton className="h-4 w-[200px]" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : users.length === 0 ? (
+                        <div className="text-center py-12">
+                            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <Users className="h-8 w-8 text-gray-400" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                {activeFiltersCount() > 0 ? "No se encontraron usuarios" : "No hay usuarios registrados"}
+                            </h3>
+                            <p className="text-gray-500 mb-6">
+                                {activeFiltersCount() > 0
+                                    ? "Intenta con otros criterios de búsqueda"
+                                    : "Comienza creando el primer usuario del sistema"
+                                }
+                            </p>
+                            {superUser && activeFiltersCount() === 0 && (
+                                <Button onClick={handleCreateUser} className="gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    Crear primer usuario
+                                </Button>
+                            )}
                         </div>
                     ) : (
                         <>
-                            {/* Tabla para md+ */}
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">#</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Usuario</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Correo</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">RUT</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Rol</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Estado</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase tracking-wider">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
+                            <div className="rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[80px]">#</TableHead>
+                                            <TableHead>Usuario</TableHead>
+                                            <TableHead>Correo</TableHead>
+                                            <TableHead>RUT</TableHead>
+                                            <TableHead>Rol</TableHead>
+                                            <TableHead>Estado</TableHead>
+                                            <TableHead className="text-right">Acciones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {users.map((user, idx) => (
-                                            <tr key={user._id} className={`${!user.activo ? 'bg-gray-200 hover:bg-gray-300 ' : 'bg-white hover:bg-gray-50'}`}>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {(page - 1) * limit + idx + 1}
+                                            <TableRow key={user._id} className={!user.activo ? "bg-gray-50 hover:bg-gray-100" : ""}>
+                                                <TableCell className="font-medium">
+                                                    {(page - 1) * limit + idx + 1}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                            <UserIcon className="h-4 w-4 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium">{user.name}</div>
+                                                            <div className="text-xs text-muted-foreground">ID: {user._id.slice(-6)}</div>
+                                                        </div>
                                                     </div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">{user.email}</div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-600 font-mono">{user.rut || 'N/A'}</div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${roleBadgeClass(user.role)}`}>
-                                                        {user.role}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">
-                                                        {user.activo ? 'Activo' : 'Inactivo'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                </TableCell>
+                                                <TableCell>
                                                     <div className="flex items-center gap-2">
+                                                        <Mail className="h-4 w-4 text-gray-400" />
+                                                        <span>{user.email}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-mono">{user.rut || '-'}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={getRoleBadgeVariant(user.role)}>
+                                                        {user.role}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={getStatusBadgeVariant(user.activo)}>
+                                                        {getStatusText(user.activo)}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
                                                         {superUser && (
-                                                            <button
-                                                                onClick={() => handleEditUser(user)}
-                                                                className="text-blue-600 hover:text-blue-900 bg-blue-200 p-2 rounded-full cursor-pointer"
-                                                                aria-label={`Editar ${user.name}`}
-                                                            >
-                                                                <Edit className="h-5 w-5" />
-                                                            </button>
+                                                            <>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleEditUser(user)}
+                                                                            >
+                                                                                <Edit className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>Editar usuario</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                onClick={() => handleToggleUserStatus(user)}
+                                                                                className={
+                                                                                    user.activo
+                                                                                        ? "text-red-600 hover:text-red-700 hover:bg-red-100"
+                                                                                        : "text-green-600 hover:text-green-700 hover:bg-green-100"
+                                                                                }
+                                                                            >
+                                                                                {user.activo ? (
+                                                                                    <XIcon className="h-4 w-4" />
+                                                                                ) : (
+                                                                                    <Check className="h-4 w-4" />
+                                                                                )}
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>{user.activo ? "Desactivar" : "Activar"}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </>
                                                         )}
-                                                        {user.activo
-                                                            ? <button
-                                                                onClick={() => handleDesactiveUser(user)}
-                                                                className="text-red-600 hover:text-red-900 bg-red-200 p-2 rounded-full cursor-pointer"
-                                                                aria-label={`Desactivar ${user.name}`}
-                                                                title={`Desactivar ${user.name}`}
-                                                            >
-                                                                <XIcon className="h-5 w-5" />
-                                                            </button>
-                                                            : <button
-                                                                onClick={() => handleActiveUser(user)}
-                                                                className="text-emerald-800 hover:text-emerald-900 bg-emerald-200 p-2 rounded-full cursor-pointer"
-                                                                aria-label={`Activar ${user.name}`}
-                                                                title={`Activar ${user.name}`}
-                                                            >
-                                                                <Check className="h-5 w-5" />
-                                                            </button>
-                                                        }
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
 
-                            {/* Lista para móviles */}
-                            <div className="md:hidden p-4">
-                                {users.length === 0 ? (
-                                    <div className="text-center py-8">
-                                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                        <p className="text-gray-500">No se encontraron usuarios</p>
+                            {/* Paginación */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between pt-6 border-t">
+                                    <div className="text-sm text-muted-foreground">
+                                        {total} usuario{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
                                     </div>
-                                ) : (
-                                    <ul className="space-y-3">
-                                        {users.map((user, idx) => (
-                                            <li key={user._id} className="border rounded-lg p-3">
-                                                <div className="flex justify-between items-start gap-2">
-                                                    <div className="flex-1">
-                                                        <div className="text-sm font-medium">{user.name}</div>
-                                                        <div className="text-xs text-gray-500">{user.email}</div>
-                                                        <div className="text-xs text-gray-400 font-mono mt-1">{user.rut || 'N/A'}</div>
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-1">
-                                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${roleBadgeClass(user.role)}`}>
-                                                            {user.role}
-                                                        </span>
-                                                        <span className={`text-xs ${user.activo ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {user.activo ? 'Activo' : 'Inactivo'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-
-                            {users.length === 0 && (
-                                <div className="text-center py-8 hidden md:block">
-                                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-500">
-                                        {searchQuery || roleFilter
-                                            ? "No se encontraron usuarios con los filtros aplicados"
-                                            : "No se encontraron usuarios"
-                                        }
-                                    </p>
-                                    {(searchQuery || roleFilter) && (
-                                        <button
-                                            onClick={handleClearFilters}
-                                            className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handlePreviousPage}
+                                            disabled={page === 1}
+                                            className="h-8 w-8"
                                         >
-                                            Limpiar filtros
-                                        </button>
-                                    )}
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-sm font-medium px-2">
+                                                Página {page} de {totalPages}
+                                            </span>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handleNextPage}
+                                            disabled={page === totalPages}
+                                            className="h-8 w-8"
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </>
                     )}
-                </div>
+                </CardContent>
+            </Card>
 
-                {total > 0 && (
-                    <div className="flex flex-col sm:flex-row justify-center sm:justify-between items-center gap-3 mt-4">
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={handlePreviousPage}
-                                disabled={page === 1 || loading}
-                                className="bg-linear-to-tr from-gray-400 to-gray-500 hover:from-gray-600 hover:to-gray-800 text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                                aria-label="Página anterior"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
-
-                            <span className="text-sm text-gray-600 font-medium">
-                                Página {page} de {totalPages}
-                            </span>
-
-                            <button
-                                onClick={handleNextPage}
-                                disabled={page === totalPages || loading}
-                                className="bg-linear-to-tr from-gray-400 to-gray-500 hover:from-gray-600 hover:to-gray-800 text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                                aria-label="Página siguiente"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
-                        </div>
-
-                        <div className="text-sm text-gray-500 hidden sm:block">
-                            {total} resultado{total !== 1 ? 's' : ''}
-                        </div>
-                    </div>
-                )}
-            </div>
+            {/* Modal */}
             {showModal && (
                 <UserModal
                     user={editingUser}

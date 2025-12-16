@@ -514,7 +514,7 @@ export default function ReservePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center mb-8">
           <h1 ref={titleRef} className="text-4xl font-bold text-balance mb-2">
