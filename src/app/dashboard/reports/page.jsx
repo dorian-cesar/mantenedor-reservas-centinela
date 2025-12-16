@@ -143,10 +143,10 @@ export default function ReportsPage() {
     }, [origin]);
 
     const buildQueryOptions = useCallback(() => ({
-        startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-        origin: origin || undefined,
-        destination: destination || undefined,
+        startDate: format(startDate, "yyyy-MM-dd"),
+        endDate: format(endDate, "yyyy-MM-dd"),
+        origin: origin && origin !== "todos" ? origin : undefined,
+        destination: destination && destination !== "todos" ? destination : undefined,
         page,
         limit
     }), [startDate, endDate, origin, destination, page, limit]);
@@ -219,7 +219,6 @@ export default function ReportsPage() {
         setEndDate(end);
         setOrigin("");
         setDestination("");
-        setSort("date:asc");
         setPage(1);
 
         loadReports(1);
@@ -428,30 +427,7 @@ export default function ReportsPage() {
                                     <Separator />
                                     <div className="flex flex-wrap gap-2">
                                         <span className="text-sm text-muted-foreground">Filtros aplicados:</span>
-                                        {startDate && (
-                                            <Badge variant="secondary" className="gap-1">
-                                                <CalendarIcon className="h-3 w-3" />
-                                                Desde: {format(startDate, "dd/MM/yyyy", { locale: es })}
-                                                <button
-                                                    onClick={() => setStartDate(null)}
-                                                    className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
-                                                >
-                                                    <XIcon className="h-3 w-3" />
-                                                </button>
-                                            </Badge>
-                                        )}
-                                        {endDate && (
-                                            <Badge variant="secondary" className="gap-1">
-                                                <CalendarIcon className="h-3 w-3" />
-                                                Hasta: {format(endDate, "dd/MM/yyyy", { locale: es })}
-                                                <button
-                                                    onClick={() => setEndDate(null)}
-                                                    className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
-                                                >
-                                                    <XIcon className="h-3 w-3" />
-                                                </button>
-                                            </Badge>
-                                        )}
+
                                         {origin && origin !== 'todos' && (
                                             <Badge variant="secondary" className="gap-1">
                                                 <MapPin className="h-3 w-3" />
