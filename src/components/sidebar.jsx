@@ -82,7 +82,7 @@ export default function Sidebar({ className = "" }) {
   ];
 
   const superUserBottomMenuItems = [
-    { icon: <Settings size={20} />, label: "Configuración", href: "/settings" },
+    // { icon: <Settings size={20} />, label: "Configuración", href: "/settings" },
   ];
 
   const toggleSidebar = () => {
@@ -109,21 +109,18 @@ export default function Sidebar({ className = "" }) {
 
   return (
     <div
-      className={`flex flex-col bg-linear-to-b from-white to-sky-200 border-r border-gray-200 transition-all duration-300 ${isCollapsed ? "w-16" : "w-64"
+      className={`flex flex-col bg-linear-to-b from-slate-900 to-black border-gray-800 transition-all duration-300 ${isCollapsed ? "w-16" : "w-64"
         } ${className}`}
     >
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 h-22">
+      <div className="flex items-center justify-between p-4 border-b border-gray-800 h-22">
         {!isCollapsed && (
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-indigo-600 rounded-lg p-2">
-              <img src="/wit.png" alt="wit logo" />
-            </div>
-            <span className="text-xl font-bold text-gray-800">WIT</span>
+          <div className="flex items-center justify-center w-full space-x-2">
+            <img src="/wit-logo.png" alt="logo wit" className="h-10"/>
           </div>
         )}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+          className="p-2 rounded-lg bg-gray-100 transition-colors duration-200 cursor-pointer"
         >
           {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
@@ -139,7 +136,7 @@ export default function Sidebar({ className = "" }) {
                 href={item.href}
                 className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
                   ? "bg-blue-50 text-blue-600 border border-blue-100"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  : "text-gray-100 hover:bg-gray-50 hover:text-gray-900"
                   }`}
               >
                 <div className="flex items-center justify-center w-6 h-6">
@@ -169,7 +166,7 @@ export default function Sidebar({ className = "" }) {
                 href={item.href}
                 className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
                   ? "bg-blue-50 text-blue-600 border border-blue-100"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  : "text-gray-100 hover:bg-gray-50 hover:text-gray-900"
                   }`}
               >
                 <div className="flex items-center justify-center w-6 h-6">
@@ -193,7 +190,7 @@ export default function Sidebar({ className = "" }) {
           })}
       </nav>
 
-      <div className="px-3 py-4 border-t border-gray-200 space-y-1">
+      <div className="px-3 py-4 border-t border-gray-800 space-y-1">
         {superUser ?
           superUserBottomMenuItems.map((item) => {
             const isActive = pathname === item.href;
@@ -203,7 +200,7 @@ export default function Sidebar({ className = "" }) {
                 href={item.href}
                 className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
                   ? "bg-blue-50 text-blue-600 border border-blue-100"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  : "text-gray-100 hover:bg-gray-50 hover:text-gray-900"
                   }`}
               >
                 <div className="flex items-center justify-center w-6 h-6">
@@ -224,7 +221,7 @@ export default function Sidebar({ className = "" }) {
                 href={item.href}
                 className={`w-full flex items-center rounded-xl px-3 py-3 transition-all duration-200 group ${isActive
                   ? "bg-blue-50 text-blue-600 border border-blue-100"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  : "text-gray-100 hover:bg-gray-50 hover:text-gray-900"
                   }`}
               >
                 <div className="flex items-center justify-center w-6 h-6">
@@ -251,7 +248,7 @@ export default function Sidebar({ className = "" }) {
       </div>
 
       {!isCollapsed && (
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-800">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-linear-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">
@@ -259,10 +256,10 @@ export default function Sidebar({ className = "" }) {
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-gray-100 truncate">
                 {user?.name || "Usuario Sistema"}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-gray-100 truncate">
                 {user?.email || "usuario@sistema.cl"}
               </p>
             </div>

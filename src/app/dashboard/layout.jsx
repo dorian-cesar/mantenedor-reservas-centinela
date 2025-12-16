@@ -10,7 +10,7 @@ export const metadata = {
 export default function DashboardLayout({ children }) {
   return (
     <>
-      <main className="flex h-screen overflow-hidden w-full">
+      <main className="flex h-screen overflow-hidden w-full bg-linear-to-br from-gray-100 to-slate-200">
         <Sidebar />
 
         <div className="flex flex-col w-full">

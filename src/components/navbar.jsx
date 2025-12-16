@@ -98,19 +98,18 @@ export default function Navbar({ onMenuToggle, className = "" }) {
         />
       )}
       <div
-        className={`bg-linear-to-r from-white to-sky-200 border-b border-gray-200 h-22 ${className}`}
+        className={`bg-linear-to-r from-slate-900 to-black border-l border-gray-800 h-22 ${className}`}
       >
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex flex-col">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-white">
                   {getPageTitle()}
                 </h1>
 
-                {/* Renderizar mensaje de bienvenida solo en cliente para evitar mismatch */}
                 {isClient && (
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-200 mt-1">
                     Bienvenido de vuelta, {user?.name?.split(" ")[0] || "Usuario"}
                   </p>
                 )}
@@ -129,16 +128,16 @@ export default function Navbar({ onMenuToggle, className = "" }) {
                     </span>
                   </div>
                   <div className="hidden lg:block text-left">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-100">
                       {user?.name || "Usuario Sistema"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-200">
                       {user?.role || "Admin"}
                     </p>
                   </div>
                   <ChevronDown
                     size={16}
-                    className={`text-gray-400 transition-transform duration-200 ${isProfileOpen ? "rotate-180" : ""
+                    className={`text-gray-200 transition-transform duration-200 ${isProfileOpen ? "rotate-180" : ""
                       }`}
                   />
                 </button>
