@@ -1,157 +1,180 @@
 "use client"
+
 import { useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"
 
-import Notification from "@/components/notification";
-import SessionHelper from "@/utils/session";
+import Notification from "@/components/notification"
+import SessionHelper from "@/utils/session"
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [notification, setNotification] = useState({ type: "", message: "" })
 
-  const [notification, setNotification] = useState({ type: '', message: '' });
-
-  const router = useRouter();
+  const router = useRouter()
 
   const togglePasswordVisibility = () => {
-    setShowPassword(prev => !prev);
+    setShowPassword(prev => !prev)
   }
 
   const showNotification = ({ type, message }) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification({ type: '', message: '' }), 5000);
-  };
+    setNotification({ type, message })
+    setTimeout(() => setNotification({ type: "", message: "" }), 5000)
+  }
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault()
+    setLoading(true)
 
     if (!email || !password) {
-      showNotification({ type: "error", message: "Por favor completa todos los campos" });
-      setLoading(false);
-      return;
+      showNotification({ type: "error", message: "Por favor completa todos los campos" })
+      setLoading(false)
+      return
     }
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          email,
-          password
-        })
-      });
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
 
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}))
 
       if (res.ok && (data.token || data.status === 200)) {
-        const rol = data.user.role;
-        if (rol !== "admin" && rol !== "superUser") {
-          showNotification({ type: "warning", message: "Acceso denegado, contacte un administrador." });
-          setLoading(false);
-          return;
+        const role = data?.user?.role
+
+        if (role !== "admin" && role !== "superUser") {
+          showNotification({
+            type: "warning",
+            message: "Acceso denegado, contacte un administrador.",
+          })
+          return
         }
+
         if (data.token) {
           const sessionResult = await SessionHelper.loginSession(
             data.token,
             data.user
-          );
+          )
 
           if (sessionResult.success) {
-            showNotification({ type: "success", message: "Inicio de sesión exitoso" });
-            setTimeout(() => {
-              router.replace("/dashboard");
-            }, 1500);
+            showNotification({
+              type: "success",
+              message: "Inicio de sesión exitoso",
+            })
+            setTimeout(() => router.replace("/dashboard"), 1500)
           } else {
-            showNotification({ type: "error", message: sessionResult.error });
+            showNotification({
+              type: "error",
+              message: sessionResult.error,
+            })
           }
         }
-        return;
+        return
       }
-      showNotification({ type: "error", message: data.message || "Credenciales inválidas" });
+
+      showNotification({
+        type: "error",
+        message: data.message || "Credenciales inválidas",
+      })
     } catch (err) {
-      console.error("fetch error:", err);
-      showNotification({ type: "error", message: "Error al conectar con el servidor" });
+      console.error("fetch error:", err)
+      showNotification({
+        type: "error",
+        message: "Error al conectar con el servidor",
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex-1 bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 p-4">
       <Notification type={notification.type} message={notification.message} />
-      <div className="w-full max-w-md">
-        <form
-          onSubmit={handleLogin}
-          className="bg-white rounded-2xl shadow-xl p-8 space-y-6 border border-gray-100"
-        >
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold text-gray-800">Inicia Sesión</h2>
-            <p className="text-gray-500">Ingresa a tu cuenta</p>
-          </div>
 
-          <div className="space-y-2">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Correo Electrónico
-            </label>
-            <input
-              id="email"
-              type="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="usuario@email.com"
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none"
-            />
-          </div>
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl">Inicia Sesión</CardTitle>
+          <CardDescription>
+            Ingresa con tus credenciales
+          </CardDescription>
+        </CardHeader>
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Contraseña
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="• • • • • • • •"
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-6">
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo electrónico</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="usuario@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 outline-none"
               />
-              <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors duration-200 p-1 cursor-pointer"
-                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-linear-to-r from-blue-500 to-indigo-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl cursor-pointer disabled:opacity-60"
-          >
-            {loading ? "Ingresando..." : "Iniciar Sesión"}
-          </button>
+            {/* Password */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
 
-          <div className="text-center space-y-3 pt-4">
-            <a href="#" className="block text-sm text-blue-600 hover:text-blue-700 transition-colors duration-200">
-              ¿Olvidaste tu contraseña?
-            </a>
-          </div>
-        </form>
-      </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? "Ingresando..." : "Iniciar Sesión"}
+            </Button>
+
+            <div className="text-center pt-2">
+              <a
+                href="#"
+                className="text-sm text-primary hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
+
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

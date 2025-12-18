@@ -1,241 +1,209 @@
 "use client"
-import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Mail, Lock, Shield, Building, IdCard } from 'lucide-react';
-import SessionHelper from '@/utils/session';
+
+import { useEffect, useRef, useState } from "react"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { User, Mail, Lock, Shield, IdCard } from "lucide-react"
+import SessionHelper from "@/utils/session"
 
 export default function UserModal({ user, onSave, onClose }) {
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        rut: '',
-        role: 'user',
-    });
-    const [loading, setLoading] = useState(false);
-    const [superUser, setSuperUser] = useState(false);
-    const passwordRef = useRef(null);
+        name: "",
+        email: "",
+        password: "",
+        rut: "",
+        role: "user",
+    })
+    const [loading, setLoading] = useState(false)
+    const [superUser, setSuperUser] = useState(false)
+    const passwordRef = useRef(null)
 
     useEffect(() => {
-        const currentUser = SessionHelper.getUser();
-        setSuperUser(String(currentUser?.role) === "superUser");
-    }, []);
+        const currentUser = SessionHelper.getUser()
+        setSuperUser(currentUser?.role?.toLowerCase() === "superuser")
+    }, [])
 
     useEffect(() => {
         if (user) {
             setFormData({
-                name: user.name || '',
-                email: user.email || '',
-                password: '',
-                rut: user.rut || '',
-                role: user.role || 'user',
-            });
-        } else {
-            // crear -> limpiar formulario
-            setFormData({
-                name: '',
-                email: '',
-                password: '',
-                rut: '',
-                role: 'user',
-            });
+                name: user.name || "",
+                email: user.email || "",
+                password: "",
+                rut: user.rut || "",
+                role: user.role || "user",
+            })
         }
-    }, [user]);
+    }, [user])
+
+    const handleChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }))
+    }
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+        e.preventDefault()
+        setLoading(true)
 
         try {
-            // Si estamos creando (no hay `user`) validamos password explícitamente
-            if (!user) {
-                if (!formData.password || formData.password.trim().length < 6) {
-                    // mensaje claro al usuario
-                    alert("La contraseña es obligatoria y debe tener al menos 6 caracteres.");
-                    setLoading(false);
-                    // enfocamos el input de password
-                    if (passwordRef.current) passwordRef.current.focus();
-                    return;
-                }
+            if (!user && (!formData.password || formData.password.length < 6)) {
+                alert("La contraseña es obligatoria y debe tener al menos 6 caracteres.")
+                passwordRef.current?.focus()
+                return
             }
 
-            // Construimos el payload de forma explícita:
-            let dataToSend;
-            if (user) {
-                // edición: si se ingresó nueva contraseña la incluimos, sino no
-                dataToSend = {
-                    name: formData.name,
-                    email: formData.email,
-                    rut: formData.rut,
-                    role: formData.role
-                };
-                if (formData.password && formData.password.trim().length >= 6) {
-                    dataToSend.password = formData.password;
-                }
-            } else {
-                // creación: enviamos todo (ya validado)
-                dataToSend = {
-                    name: formData.name,
-                    email: formData.email,
-                    password: formData.password,
-                    rut: formData.rut,
-                    role: formData.role
-                };
+            let payload = {
+                name: formData.name,
+                email: formData.email,
+                rut: formData.rut,
+                role: formData.role,
             }
 
-            await onSave(dataToSend);
+            if (!user || formData.password.length >= 6) {
+                payload.password = formData.password
+            }
+
+            await onSave(payload)
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+    }
 
     return (
-        <div className="fixed inset-0 bg-black/60 bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full">
-                <div className="flex justify-between items-center p-6 border-b border-gray-400">
-                    <h2 className="text-xl font-semibold">
-                        {user ? 'Editar Usuario' : 'Nuevo Usuario'}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
+        <Dialog open onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>
+                        {user ? "Editar Usuario" : "Nuevo Usuario"}
+                    </DialogTitle>
+                </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Nombre Completo
-                        </label>
+                    {/* Nombre */}
+                    <div className="space-y-1">
+                        <Label>Nombre completo</Label>
                         <div className="relative">
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <input
-                                type="text"
-                                name="name"
+                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                className="pl-10"
                                 value={formData.name}
-                                onChange={handleChange}
+                                onChange={e => handleChange("name", e.target.value)}
                                 required
-                                className="w-full pl-11 pr-12 py-3 border-2 border-gray-400 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200"
-                                placeholder="Ej: Juan Pérez"
-                                autoComplete="name"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Correo Electrónico
-                        </label>
+                    {/* Email */}
+                    <div className="space-y-1">
+                        <Label>Correo electrónico</Label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <input
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
                                 type="email"
-                                name="email"
+                                className="pl-10"
                                 value={formData.email}
-                                onChange={handleChange}
+                                onChange={e => handleChange("email", e.target.value)}
                                 required
-                                className="w-full pl-11 pr-12 py-3 border-2 border-gray-400 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200"
-                                placeholder="Ej: usuario@ejemplo.com"
-                                autoComplete="email"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {/* Password */}
+                    <div className="space-y-1">
+                        <Label>
                             {user
-                                ? (superUser ? 'Cambiar Contraseña' : 'Bloqueado')
-                                : 'Contraseña'}
-                        </label>
+                                ? superUser
+                                    ? "Cambiar contraseña"
+                                    : "Contraseña (bloqueada)"
+                                : "Contraseña"}
+                        </Label>
+
                         <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <input
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
                                 ref={passwordRef}
                                 type="password"
-                                name="password"
-                                value={formData.password}
-                                onChange={handleChange}
-                                required={!user}
-                                minLength={6}
+                                className="pl-10"
                                 disabled={!!user && !superUser}
-                                className={`w-full pl-11 pr-12 py-3 border-2 rounded-xl outline-none transition-all duration-200 
-                                    ${user && !superUser
-                                        ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
-                                        : 'border-gray-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50'}
-      `}
-                                placeholder={user ? '• • • • • • • •' : 'Ingresa una contraseña'}
-                                autoComplete={user ? "new-password" : "new-password"}
+                                value={formData.password}
+                                onChange={e => handleChange("password", e.target.value)}
+                                placeholder={user ? "••••••••" : "Mínimo 6 caracteres"}
                             />
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                            {user ? (superUser ? 'Deja vacío para mantener la contraseña actual' : 'No puedes cambiar la contraseña') : 'La contraseña debe tener al menos 6 caracteres'}
+
+                        <p className="text-xs text-muted-foreground">
+                            {user
+                                ? superUser
+                                    ? "Déjala vacía para mantener la actual"
+                                    : "No puedes cambiar la contraseña"
+                                : "Debe tener al menos 6 caracteres"}
                         </p>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Rut
-                        </label>
+                    {/* RUT */}
+                    <div className="space-y-1">
+                        <Label>RUT</Label>
                         <div className="relative">
-                            <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <input
-                                type="text"
-                                name="rut"
+                            <IdCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                className="pl-10"
                                 value={formData.rut}
-                                onChange={handleChange}
+                                onChange={e => handleChange("rut", e.target.value)}
                                 required
-                                className="w-full pl-11 pr-12 py-3 border-2 border-gray-400 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200"
-                                placeholder="Ej: 12345678-9"
-                                autoComplete="off"
                             />
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Rol
-                        </label>
-                        <div className="relative">
-                            <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <select
-                                name="role"
-                                value={formData.role}
-                                onChange={handleChange}
-                                required
-                                className="w-full pl-11 pr-12 py-3 border-2 border-gray-400 rounded-xl focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all duration-200"
-                            >
-                                <option value="user">Usuario</option>
-                                <option value="admin">Administrador</option>
-                            </select>
-                        </div>
+                    {/* Rol */}
+                    <div className="space-y-1">
+                        <Label>Rol</Label>
+                        <Select
+                            value={formData.role}
+                            onValueChange={value => handleChange("role", value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="user">Usuario</SelectItem>
+                                <SelectItem value="admin">Administrador</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
-                    {/* Botones */}
-                    <div className="flex gap-3 pt-4">
-                        <button
+                    <DialogFooter className="pt-4">
+                        <Button
                             type="button"
+                            variant="outline"
                             onClick={onClose}
-                            className="flex-1 py-2 px-4 border-2 border-gray-400 rounded-xl text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer"
                         >
                             Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-1 py-2 px-4 bg-linear-to-r from-sky-600 to-sky-800 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed transition-colors"
-                        >
-                            {loading ? 'Guardando...' : (user ? 'Actualizar' : 'Crear')}
-                        </button>
-                    </div>
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading
+                                ? "Guardando..."
+                                : user
+                                    ? "Actualizar"
+                                    : "Crear"}
+                        </Button>
+                    </DialogFooter>
+
                 </form>
-            </div>
-        </div>
-    );
+            </DialogContent>
+        </Dialog>
+    )
 }
