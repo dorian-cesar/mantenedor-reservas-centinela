@@ -157,26 +157,6 @@ export default function ServicesPage() {
         }
     }
 
-    // Eliminar servicios
-    const handleDeleteServices = async () => {
-        if (!filters.serviceNumber || !filters.startDate) {
-            showNotification('error', 'Debe especificar número de servicio y fecha de inicio')
-            setDeleteDialogOpen(false)
-            return
-        }
-
-        try {
-            const result = await ServicesService.deleteGeneratedServices(filters.serviceNumber, filters.startDate)
-            showNotification('success', result.message || 'Servicios eliminados exitosamente')
-            fetchServices(filters.page)
-        } catch (error) {
-            console.error('Error deleting services:', error)
-            showNotification('error', error.message || 'Error al eliminar servicios')
-        } finally {
-            setDeleteDialogOpen(false)
-        }
-    }
-
     const handleDelete = async (id) => {
         if (!id) {
             showNotification('error', 'Debe especificar id de servicio')
@@ -330,56 +310,19 @@ export default function ServicesPage() {
 
                         <Separator />
 
-                        {/* Acciones de eliminación */}
                         <div className="flex items-center justify-between">
                             <div className="text-sm text-muted-foreground">
                                 {filters.serviceNumber && filters.startDate ? (
                                     <div className="flex items-center gap-2">
                                         <AlertTriangle className="h-4 w-4 text-amber-500" />
                                         <span>
-                                            Se eliminarán todos los servicios #{filters.serviceNumber} desde {formatDate(filters.startDate)}
+                                            Se están listando todos los servicios #{filters.serviceNumber} desde {formatDate(filters.startDate)}
                                         </span>
                                     </div>
                                 ) : (
-                                    <span>Especifica número y fecha para habilitar la eliminación</span>
+                                    <span>Especifica número y fecha para la busqueda</span>
                                 )}
                             </div>
-
-                            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                                <AlertDialogTrigger asChild>
-                                    <Button
-                                        variant="destructive"
-                                        disabled={!filters.serviceNumber || !filters.startDate}
-                                        className="gap-2"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                        Borrar servicios
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle className="flex items-center gap-2">
-                                            <AlertTriangle className="h-5 w-5 text-red-600" />
-                                            ¿Estás seguro de eliminar estos servicios?
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Esta acción eliminará permanentemente todos los servicios con número{' '}
-                                            <Badge variant="outline" className="mx-1">#{filters.serviceNumber}</Badge>
-                                            {' '}desde la fecha{' '}
-                                            <Badge variant="outline" className="mx-1">{formatDate(filters.startDate)}</Badge>.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={handleDeleteServices}
-                                            className="bg-red-600 hover:bg-red-700"
-                                        >
-                                            Sí, eliminar servicios
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
                         </div>
                     </form>
                 </CardContent>
