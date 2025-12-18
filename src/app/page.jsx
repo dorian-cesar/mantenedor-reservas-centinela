@@ -104,7 +104,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100 p-4">
       <Notification type={notification.type} message={notification.message} />
 
       <Card className="w-full max-w-md shadow-xl">
@@ -175,6 +175,10 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+
+      <div className="absolute bottom-5 right-5 w-15 h-auto">
+        <img src="/logo-wit-dark.png" alt="Logo Wit" />
+      </div>
     </div>
   )
 }

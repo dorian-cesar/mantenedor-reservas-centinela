@@ -356,7 +356,6 @@ export default function UsersPage() {
                                             <SelectItem value="all">Todos los roles</SelectItem>
                                             <SelectItem value="user">Usuario</SelectItem>
                                             <SelectItem value="admin">Administrador</SelectItem>
-                                            <SelectItem value="superUser">Super Usuario</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
