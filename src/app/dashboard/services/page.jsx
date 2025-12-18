@@ -63,7 +63,7 @@ import {
 } from "@/components/ui/popover"
 
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 
 export default function ServicesPage() {
@@ -71,6 +71,8 @@ export default function ServicesPage() {
     const [loading, setLoading] = useState(false)
     const [notification, setNotification] = useState({ type: '', message: '' })
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [deleteOneDialogOpen, setDeleteOneDialogOpen] = useState(false)
+    const [serviceToDelete, setServiceToDelete] = useState(null)
 
     // Filtros
     const [filters, setFilters] = useState({
@@ -176,9 +178,9 @@ export default function ServicesPage() {
     }
 
     const handleDelete = async (id) => {
-        if(!id) {
+        if (!id) {
             showNotification('error', 'Debe especificar id de servicio')
-            setDeleteDialogOpen(false)
+            setDeleteOneDialogOpen(false)
             return
         }
 
@@ -190,8 +192,13 @@ export default function ServicesPage() {
             console.error('Error deleting service:', error)
             showNotification('error', error.message || 'Error al eliminar servicio')
         } finally {
-            setDeleteDialogOpen(false)
+            setDeleteOneDialogOpen(false)
         }
+    }
+
+    const openDeleteConfirm = (service) => {
+        setServiceToDelete(service)
+        setDeleteOneDialogOpen(true)
     }
 
     const formatDate = (dateString) => {
@@ -477,7 +484,7 @@ export default function ServicesPage() {
                                                         <DropdownMenuContent align="end" className="w-40">
                                                             <DropdownMenuItem
                                                                 className="text-red-600 focus:text-red-600 cursor-pointer"
-                                                                onClick={() => handleDelete(service._id)}
+                                                                onClick={() => openDeleteConfirm(service)}
                                                             >
                                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                                 Borrar
@@ -490,6 +497,44 @@ export default function ServicesPage() {
                                     </TableBody>
                                 </Table>
                             </div>
+
+                            <AlertDialog open={deleteOneDialogOpen} onOpenChange={setDeleteOneDialogOpen}>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="flex items-center gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                                            ¿Eliminar este servicio?
+                                        </AlertDialogTitle>
+
+                                        <AlertDialogDescription>
+                                            Esta acción eliminará permanentemente el siguiente servicio.
+                                        </AlertDialogDescription>
+
+                                        {serviceToDelete && (
+                                            <div className="rounded-md border p-3 text-sm space-y-1 mt-3">
+                                                <div><strong>N°:</strong> #{serviceToDelete.serviceNumber}</div>
+                                                <div><strong>Nombre:</strong> {serviceToDelete.serviceName}</div>
+                                                <div><strong>Fecha:</strong> {serviceToDelete.date}</div>
+                                                <div>
+                                                    <strong>Ruta:</strong> {serviceToDelete.origin} → {serviceToDelete.destination}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </AlertDialogHeader>
+
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+
+                                        <AlertDialogAction
+                                            className="bg-red-600 hover:bg-red-700"
+                                            onClick={() => handleDelete(serviceToDelete?._id)}
+                                        >
+                                            Sí, eliminar
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+
 
                             {/* Paginación */}
                             {services.length > 0 && (
