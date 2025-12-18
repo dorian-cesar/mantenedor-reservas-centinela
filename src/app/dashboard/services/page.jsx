@@ -387,6 +387,7 @@ export default function ServicesPage() {
                                             <TableHead>Origen</TableHead>
                                             <TableHead>Destino</TableHead>
                                             <TableHead className="w-[180px]">Fecha</TableHead>
+                                            <TableHead>Pasajeros</TableHead>
                                             <TableHead>Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -415,6 +416,14 @@ export default function ServicesPage() {
                                                         <Calendar className="h-4 w-4 text-gray-400" />
                                                         <span className="text-sm">{service.date}</span>
                                                     </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge
+                                                        variant={service?.seatsSummary.confirmedPassengers > 0 ? "default" : "outline"}
+                                                        className={service?.seatsSummary.confirmedPassengers > 0 ? "bg-blue-100 text-blue-800 hover:bg-blue-100" : ""}
+                                                    >
+                                                        {service?.seatsSummary.confirmedPassengers ?? "-"}
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <DropdownMenu>
