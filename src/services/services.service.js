@@ -120,27 +120,28 @@ class ServicesService {
         }
     }
 
-    static async deleteServiceByID(serviceId) {
-        try {
-            const res = await fetch(`${API_URL}/services/${serviceId}`, {
+    static async deleteServiceByID(serviceId, force = false) {
+        const query = force ? '?force=true' : '';
+
+        const res = await fetch(
+            `${API_URL}/services/${serviceId}${query}`,
+            {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!res.ok) {
-                const txt = await res.text().catch(() => null);
-                throw new Error(txt || 'Error al eliminar servicio');
+                    Authorization: `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json',
+                },
             }
+        );
 
-            const json = await res.json();
-            return json;
-        } catch (err) {
-            console.error('deleteServiceByID error:', err);
-            throw err;
+        if (!res.ok) {
+            const json = await res.json().catch(() => null);
+            const error = new Error(json?.error || 'Error al eliminar servicio');
+            error.status = res.status;
+            throw error;
         }
+
+        return res.json();
     }
 }
 

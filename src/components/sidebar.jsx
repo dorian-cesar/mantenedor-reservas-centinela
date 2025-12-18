@@ -175,7 +175,7 @@ export default function Sidebar({ className = "" }) {
         <div>
           {superUser && !isCollapsed && (
             <p className="text-xs text-gray-700 text-center">
-              v.2.0.3
+              v.2.0.4
             </p>
           )}
 

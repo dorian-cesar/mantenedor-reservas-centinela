@@ -73,6 +73,7 @@ export default function ServicesPage() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [deleteOneDialogOpen, setDeleteOneDialogOpen] = useState(false)
     const [serviceToDelete, setServiceToDelete] = useState(null)
+    const [forceDeleteDialogOpen, setForceDeleteDialogOpen] = useState(false)
 
     // Filtros
     const [filters, setFilters] = useState({
@@ -157,24 +158,32 @@ export default function ServicesPage() {
         }
     }
 
-    const handleDelete = async (id) => {
-        if (!id) {
-            showNotification('error', 'Debe especificar id de servicio')
-            setDeleteOneDialogOpen(false)
-            return
-        }
+    const handleDelete = async (id, force = false) => {
+        if (!id) return;
 
         try {
-            const result = await ServicesService.deleteServiceByID(id)
-            showNotification('success', result.message || 'Servicio eliminado exitosamente')
-            fetchServices(filters.page)
+            const result = await ServicesService.deleteServiceByID(id, force);
+
+            showNotification(
+                'success',
+                result.message || 'Servicio eliminado exitosamente'
+            );
+
+            fetchServices(filters.page);
+
         } catch (error) {
-            console.error('Error deleting service:', error)
-            showNotification('error', error.message || 'Error al eliminar servicio')
-        } finally {
-            setDeleteOneDialogOpen(false)
+            if (error.status === 409) {
+                setDeleteOneDialogOpen(false);
+                setForceDeleteDialogOpen(true);
+                return;
+            }
+
+            showNotification(
+                'error',
+                error.message || 'Error al eliminar servicio'
+            );
         }
-    }
+    };
 
     const openDeleteConfirm = (service) => {
         setServiceToDelete(service)
@@ -482,6 +491,42 @@ export default function ServicesPage() {
                                             onClick={() => handleDelete(serviceToDelete?._id)}
                                         >
                                             Sí, eliminar
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+
+                            <AlertDialog
+                                open={forceDeleteDialogOpen}
+                                onOpenChange={setForceDeleteDialogOpen}
+                            >
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                                            <AlertTriangle className="h-5 w-5" />
+                                            Atención
+                                        </AlertDialogTitle>
+
+                                        <AlertDialogDescription>
+                                            Este servicio tiene <strong>pasajeros confirmados</strong>.
+                                            <br />
+                                            Eliminarlo provocará la pérdida de esta información.
+                                            <br /><br />
+                                            ¿Deseas eliminarlo de todas formas?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+
+                                        <AlertDialogAction
+                                            className="bg-red-700 hover:bg-red-800"
+                                            onClick={() => {
+                                                handleDelete(serviceToDelete?._id, true);
+                                                setForceDeleteDialogOpen(false);
+                                            }}
+                                        >
+                                            Sí, eliminar igualmente
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
