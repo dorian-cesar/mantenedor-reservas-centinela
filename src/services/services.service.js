@@ -119,6 +119,29 @@ class ServicesService {
             throw err;
         }
     }
+
+    static async deleteServiceByID(serviceId) {
+        try {
+            const res = await fetch(`${API_URL}/services/${serviceId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                throw new Error(txt || 'Error al eliminar servicio');
+            }
+
+            const json = await res.json();
+            return json;
+        } catch (err) {
+            console.error('deleteServiceByID error:', err);
+            throw err;
+        }
+    }
 }
 
 export default ServicesService;

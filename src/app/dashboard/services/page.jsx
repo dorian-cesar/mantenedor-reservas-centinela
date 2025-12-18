@@ -12,7 +12,8 @@ import {
     X,
     Loader2,
     AlertTriangle,
-    ChevronDown
+    ChevronDown,
+    MoreHorizontal
 } from "lucide-react"
 import Notification from "@/components/notification"
 import {
@@ -62,6 +63,8 @@ import {
 } from "@/components/ui/popover"
 
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem} from "@/components/ui/dropdown-menu"
+
 
 export default function ServicesPage() {
     const [services, setServices] = useState([])
@@ -167,6 +170,25 @@ export default function ServicesPage() {
         } catch (error) {
             console.error('Error deleting services:', error)
             showNotification('error', error.message || 'Error al eliminar servicios')
+        } finally {
+            setDeleteDialogOpen(false)
+        }
+    }
+
+    const handleDelete = async (id) => {
+        if(!id) {
+            showNotification('error', 'Debe especificar id de servicio')
+            setDeleteDialogOpen(false)
+            return
+        }
+
+        try {
+            const result = await ServicesService.deleteServiceByID(id)
+            showNotification('success', result.message || 'Servicio eliminado exitosamente')
+            fetchServices(filters.page)
+        } catch (error) {
+            console.error('Error deleting service:', error)
+            showNotification('error', error.message || 'Error al eliminar servicio')
         } finally {
             setDeleteDialogOpen(false)
         }
@@ -415,6 +437,7 @@ export default function ServicesPage() {
                                             <TableHead>Origen</TableHead>
                                             <TableHead>Destino</TableHead>
                                             <TableHead className="w-[180px]">Fecha</TableHead>
+                                            <TableHead>Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -442,6 +465,25 @@ export default function ServicesPage() {
                                                         <Calendar className="h-4 w-4 text-gray-400" />
                                                         <span className="text-sm">{service.date}</span>
                                                     </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+
+                                                        <DropdownMenuContent align="end" className="w-40">
+                                                            <DropdownMenuItem
+                                                                className="text-red-600 focus:text-red-600 cursor-pointer"
+                                                                onClick={() => handleDelete(service._id)}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Borrar
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
