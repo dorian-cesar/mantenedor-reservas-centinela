@@ -242,6 +242,12 @@ export default function TemplateModal({ template, onSave, onClose }) {
         }
     };
 
+    const formatDateDMY = (date) => {
+        if (!date) return "";
+        const d = new Date(date);
+        return d.toISOString().split("T")[0].split("-").reverse().join("-");
+    };
+
     return (
         <Dialog open={true} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[650px] p-0 gap-0">
@@ -367,9 +373,7 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                                 className="w-full md:w-auto justify-between"
                                             >
                                                 {formData.startDate
-                                                    ? formData.startDate.toLocaleDateString("es-CL", {
-                                                        timeZone: "America/Santiago",
-                                                    })
+                                                    ? formatDateDMY(formData.startDate)
                                                     : "Seleccionar fecha"}
                                                 <ChevronDownIcon />
                                             </Button>
@@ -424,9 +428,7 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                                         className="w-full md:w-auto justify-between"
                                                     >
                                                         {formData.endDate
-                                                            ? formData.endDate.toLocaleDateString("es-CL", {
-                                                                timeZone: "America/Santiago",
-                                                            })
+                                                            ? formatDateDMY(formData.endDate)
                                                             : "Seleccionar fecha"}
                                                         <ChevronDownIcon />
                                                     </Button>
