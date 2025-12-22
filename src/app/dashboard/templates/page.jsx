@@ -186,7 +186,7 @@ export default function TemplatesPage() {
                     if (result.isConfirmed) {
                         try {
                             await ServicesService.generateOne(createdId);
-                            showNotification("success", "Servicios creados correctamente por 14 días");
+                            showNotification("success", "Servicios creados correctamente");
                         } catch (err) {
                             console.error("Error creando services:", err);
                             showNotification("error", "Error al crear servicios: " + (err?.message || err));

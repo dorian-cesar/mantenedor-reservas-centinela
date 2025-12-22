@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { X, Calendar, Clock, Home, Truck, List, Check, Bus, ChevronDownIcon } from "lucide-react";
+import { X, Calendar, Clock, Home, Truck, List, Check, Bus, ChevronDownIcon, CalendarDays } from "lucide-react";
 import SessionHelper from "@/utils/session";
 import LayoutService from "@/services/layout.service";
 import {
@@ -37,6 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 import {
     Popover,
@@ -49,12 +50,15 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 export default function TemplateModal({ template, onSave, onClose }) {
 
-    const [open, setOpen] = useState(false)
+    const [openStartDate, setOpenStartDate] = useState(false);
+    const [openEndDate, setOpenEndDate] = useState(false);
+    const [hasEndDate, setHasEndDate] = useState(false);
 
     const [formData, setFormData] = useState({
         origin: "",
         destination: "",
         startDate: undefined,
+        endDate: undefined,
         time: "",
         company: "",
         layout: "",
@@ -73,17 +77,25 @@ export default function TemplateModal({ template, onSave, onClose }) {
 
     useEffect(() => {
         if (template) {
+            const templateEndDate = template.endDate
+                ? new Date(template.endDate)
+                : undefined;
+
             setFormData({
                 origin: template.origin || "",
                 destination: template.destination || "",
                 startDate: template.startDate
                     ? new Date(template.startDate)
                     : undefined,
+                endDate: templateEndDate,
                 time: template.time || "",
                 company: template.company || "",
                 layout: template.layout?._id || template.layout || "",
                 daysOfWeek: (template.daysOfWeek || []).slice(),
             });
+
+            // Si tiene endDate, activar el switch
+            setHasEndDate(templateEndDate !== undefined);
         }
     }, [template]);
 
@@ -117,7 +129,16 @@ export default function TemplateModal({ template, onSave, onClose }) {
                 return;
             }
 
-            await onSave({
+            // Validar que endDate no sea anterior a startDate
+            if (hasEndDate && formData.endDate) {
+                if (formData.endDate < formData.startDate) {
+                    alert("La fecha de fin no puede ser anterior a la fecha de inicio");
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            const dataToSave = {
                 origin: formData.origin,
                 destination: formData.destination,
                 startDate: formData.startDate
@@ -127,7 +148,17 @@ export default function TemplateModal({ template, onSave, onClose }) {
                 company: formData.company,
                 layout: formData.layout,
                 daysOfWeek: formData.daysOfWeek,
-            });
+            };
+
+            // Solo enviar endDate si está activado y tiene valor
+            if (hasEndDate && formData.endDate) {
+                dataToSave.endDate = formData.endDate.toISOString().split("T")[0];
+            } else {
+                // Si el switch está desactivado, enviar null explícitamente
+                dataToSave.endDate = null;
+            }
+
+            await onSave(dataToSave);
         } finally {
             setLoading(false);
         }
@@ -135,6 +166,14 @@ export default function TemplateModal({ template, onSave, onClose }) {
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleEndDateToggle = (checked) => {
+        setHasEndDate(checked);
+        if (!checked) {
+            // Si se desactiva, limpiar la fecha de fin
+            setFormData(prev => ({ ...prev, endDate: undefined }));
+        }
     };
 
     const dayOptions = [
@@ -174,12 +213,38 @@ export default function TemplateModal({ template, onSave, onClose }) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return date < today;
-      };
+    };
 
+    const getServicesCount = () => {
+        if (!formData.startDate || !formData.daysOfWeek.length) return 0;
+
+        if (hasEndDate && formData.endDate) {
+            // Calcular cuántos días hay entre startDate y endDate
+            const start = new Date(formData.startDate);
+            const end = new Date(formData.endDate);
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+            // Contar cuántos de esos días son días seleccionados
+            let count = 0;
+            for (let i = 0; i < diffDays; i++) {
+                const currentDate = new Date(start);
+                currentDate.setDate(start.getDate() + i);
+                const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+                if (formData.daysOfWeek.includes(dayOfWeek)) {
+                    count++;
+                }
+            }
+            return count;
+        } else {
+            // Sin endDate: mostrar para 2 semanas (14 días)
+            return formData.daysOfWeek.length * 2;
+        }
+    };
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[600px] p-0 gap-0">
+            <DialogContent className="sm:max-w-[650px] p-0 gap-0">
                 <DialogHeader className="px-6 pt-6 pb-4">
                     <div className="flex items-center justify-between">
                         <div>
@@ -295,7 +360,7 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                         <Calendar className="h-4 w-4 text-gray-500" />
                                         Fecha de inicio *
                                     </Label>
-                                    <Popover open={open} onOpenChange={setOpen}>
+                                    <Popover open={openStartDate} onOpenChange={setOpenStartDate}>
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
@@ -321,7 +386,7 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                                         ...prev,
                                                         startDate: date,
                                                     }));
-                                                    setOpen(false);
+                                                    setOpenStartDate(false);
                                                 }}
                                                 initialFocus
                                                 disabled={isPastDay}
@@ -331,6 +396,78 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                     <p className="text-xs text-gray-500 mt-1">
                                         La generación de servicios comenzará a partir de esta fecha
                                     </p>
+                                </div>
+
+                                {/* Campo para fecha de fin */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="hasEndDate" className="flex items-center gap-2 cursor-pointer">
+                                            <CalendarDays className="h-4 w-4 text-gray-500" />
+                                            Establecer fecha de fin
+                                        </Label>
+                                        <Switch
+                                            id="hasEndDate"
+                                            checked={hasEndDate}
+                                            onCheckedChange={handleEndDateToggle}
+                                        />
+                                    </div>
+
+                                    {hasEndDate && (
+                                        <div className="space-y-2 pl-4 border-l-2 border-gray-200">
+                                            <Label htmlFor="endDate" className="flex items-center gap-2 text-sm">
+                                                Fecha de fin
+                                            </Label>
+                                            <Popover open={openEndDate} onOpenChange={setOpenEndDate}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full md:w-auto justify-between"
+                                                    >
+                                                        {formData.endDate
+                                                            ? formData.endDate.toLocaleDateString("es-CL", {
+                                                                timeZone: "America/Santiago",
+                                                            })
+                                                            : "Seleccionar fecha"}
+                                                        <ChevronDownIcon />
+                                                    </Button>
+                                                </PopoverTrigger>
+
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <CalendarComponent
+                                                        mode="single"
+                                                        locale={es}
+                                                        selected={formData.endDate}
+                                                        onSelect={(date) => {
+                                                            if (!date) return;
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                endDate: date,
+                                                            }));
+                                                            setOpenEndDate(false);
+                                                        }}
+                                                        initialFocus
+                                                        disabled={(date) =>
+                                                            isPastDay(date) ||
+                                                            (formData.startDate && date < formData.startDate)
+                                                        }
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Los servicios se generarán hasta esta fecha inclusive
+                                            </p>
+                                            {formData.startDate && formData.endDate && formData.endDate < formData.startDate && (
+                                                <p className="text-xs text-red-500 mt-1">
+                                                    ⚠️ La fecha de fin no puede ser anterior a la fecha de inicio
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {!hasEndDate && (
+                                        <p className="text-xs text-gray-500 pl-4">
+                                            Los servicios se generarán indefinidamente
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3">
@@ -353,7 +490,10 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                             {formData.daysOfWeek.length} día(s) seleccionado(s)
                                         </Badge>
                                         <p className="text-xs text-gray-500">
-                                            Se generarán {formData.daysOfWeek.length * 2} servicios en 2 semanas
+                                            Se generarán {getServicesCount()} servicios
+                                            {hasEndDate && formData.endDate ?
+                                                ` hasta el ${formData.endDate.toLocaleDateString()}` :
+                                                " en 2 semanas (por defecto)"}
                                         </p>
                                     </div>
                                 </div>
@@ -440,8 +580,33 @@ export default function TemplateModal({ template, onSave, onClose }) {
                                     </p>
                                 </div>
                                 <div className="space-y-1">
+                                    <p className="text-gray-500">Finaliza:</p>
+                                    <p className="font-medium">
+                                        {hasEndDate && formData.endDate
+                                            ? new Date(formData.endDate).toLocaleDateString()
+                                            : "Indefinido"}
+                                    </p>
+                                </div>
+                                <div className="col-span-2 space-y-1">
+                                    <p className="text-gray-500">Días seleccionados:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {formData.daysOfWeek.length > 0 ? (
+                                            formData.daysOfWeek.map(dayNum => {
+                                                const day = dayOptions.find(d => d.n === dayNum);
+                                                return (
+                                                    <Badge key={dayNum} variant="outline" className="text-xs">
+                                                        {day?.label}
+                                                    </Badge>
+                                                );
+                                            })
+                                        ) : (
+                                            <span className="text-gray-400">—</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="col-span-2 space-y-1">
                                     <p className="text-gray-500">Servicios a generar:</p>
-                                    <p className="font-medium">{formData.daysOfWeek.length * 2}</p>
+                                    <p className="font-medium text-blue-600">{getServicesCount()} servicios</p>
                                 </div>
                             </div>
                         </div>
