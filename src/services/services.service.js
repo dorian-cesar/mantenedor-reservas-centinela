@@ -143,6 +143,30 @@ class ServicesService {
 
         return res.json();
     }
+
+    static async updateGeneratedServices(serviceNumber, params) {
+        try {
+            const response = await fetch(`${API_URL}/services/update/${serviceNumber}`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(params),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+
+        } catch (error) {
+            console.error('Error in updateGeneratedServices:', error);
+            throw error;
+        }
+    }
 }
 
 export default ServicesService;

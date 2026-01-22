@@ -92,9 +92,9 @@ export default function TemplateModal({ template, onSave, onClose }) {
                 company: template.company || "",
                 layout: template.layout?._id || template.layout || "",
                 daysOfWeek: (template.daysOfWeek || []).slice(),
+                serviceNumber: template.serviceNumber || ""
             });
 
-            // Si tiene endDate, activar el switch
             setHasEndDate(templateEndDate !== undefined);
         }
     }, [template]);
@@ -138,6 +138,9 @@ export default function TemplateModal({ template, onSave, onClose }) {
                 }
             }
 
+            const serviceNumber = template?.serviceNumber || "";
+            const serviceName = `#${serviceNumber} ${formData.origin} → ${formData.destination} ${formData.time}`;
+
             const dataToSave = {
                 origin: formData.origin,
                 destination: formData.destination,
@@ -148,6 +151,10 @@ export default function TemplateModal({ template, onSave, onClose }) {
                 company: formData.company,
                 layout: formData.layout,
                 daysOfWeek: formData.daysOfWeek,
+                ...(template?.serviceNumber && {
+                    serviceName: serviceName,
+                    serviceNumber: template.serviceNumber
+                }),
             };
 
             // Solo enviar endDate si está activado y tiene valor

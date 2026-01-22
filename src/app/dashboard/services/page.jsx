@@ -13,7 +13,10 @@ import {
     Loader2,
     AlertTriangle,
     ChevronDown,
-    MoreHorizontal
+    MoreHorizontal,
+    Edit,
+    Clock,
+    MapPin
 } from "lucide-react"
 import Notification from "@/components/notification"
 import {
@@ -57,6 +60,15 @@ import {
 } from "@/components/ui/tooltip"
 
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+
+import {
     Popover,
     PopoverTrigger,
     PopoverContent,
@@ -74,6 +86,16 @@ export default function ServicesPage() {
     const [deleteOneDialogOpen, setDeleteOneDialogOpen] = useState(false)
     const [serviceToDelete, setServiceToDelete] = useState(null)
     const [forceDeleteDialogOpen, setForceDeleteDialogOpen] = useState(false)
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editLoading, setEditLoading] = useState(false);
+    const [editForm, setEditForm] = useState({
+        fromDate: '',
+        updateAll: false,
+        origin: '',
+        destination: '',
+        time: '',
+        serviceName: ''
+    })
 
     // Filtros
     const [filters, setFilters] = useState({
@@ -185,6 +207,96 @@ export default function ServicesPage() {
         }
     };
 
+    const handleUpdateServices = async () => {
+        if (!filters.serviceNumber) {
+            showNotification('error', 'Debe especificar un número de servicio para editar');
+            return;
+        }
+
+        if (!editForm.updateAll && !editForm.fromDate) {
+            showNotification('error', 'Debe especificar una fecha o seleccionar "Todas las fechas"');
+            return;
+        }
+
+        // Validar que al menos haya un campo para actualizar
+        if (!editForm.origin && !editForm.destination && !editForm.time && !editForm.serviceName) {
+            showNotification('error', 'Debe especificar al menos un campo para actualizar');
+            return;
+        }
+
+        try {
+            setEditLoading(true);
+
+            const params = {
+                ...(editForm.fromDate && { fromDate: editForm.fromDate }),
+                updateAll: editForm.updateAll,
+            };
+
+            if (editForm.origin.trim()) params.origin = editForm.origin.trim();
+            if (editForm.destination.trim()) params.destination = editForm.destination.trim();
+            if (editForm.time.trim()) params.time = editForm.time.trim();
+            if (editForm.serviceName.trim()) params.serviceName = editForm.serviceName.trim();
+
+            console.log('Enviando parámetros:', params); // Para debug
+
+            const result = await ServicesService.updateGeneratedServices(
+                filters.serviceNumber,
+                params
+            );
+
+            showNotification('success', result.message || 'Servicios actualizados exitosamente');
+            setEditDialogOpen(false);
+            setEditForm({
+                fromDate: '',
+                updateAll: false,
+                origin: '',
+                destination: '',
+                time: '',
+                serviceName: ''
+            });
+
+            // Esperar un momento antes de recargar para que la base de datos se actualice
+            setTimeout(() => {
+                fetchServices(filters.page);
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error updating services:', error);
+            showNotification('error', error.message || 'Error al actualizar servicios');
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    // Función para resetear el formulario al abrir - VERSIÓN MEJORADA
+    const handleOpenEditDialog = () => {
+        // Usar el primer servicio encontrado como referencia para los valores por defecto
+        const firstService = services[0];
+
+        // Extraer hora del time si existe
+        let defaultTime = '';
+        if (firstService?.time) {
+            // Si time es un objeto con formato, extraer solo HH:MM
+            const timeStr = firstService.time.toString();
+            if (timeStr.includes(':')) {
+                defaultTime = timeStr.slice(0, 5); // Tomar solo HH:MM
+            } else {
+                defaultTime = firstService.time;
+            }
+        }
+
+        setEditForm({
+            fromDate: filters.startDate || '',
+            updateAll: !filters.startDate,
+            origin: firstService?.origin || '',
+            destination: firstService?.destination || '',
+            time: defaultTime,
+            serviceName: firstService?.serviceName || ''
+        });
+
+        setEditDialogOpen(true);
+    };
+
     const openDeleteConfirm = (service) => {
         setServiceToDelete(service)
         setDeleteOneDialogOpen(true)
@@ -200,6 +312,19 @@ export default function ServicesPage() {
             day: 'numeric'
         })
     }
+
+    const formatTime = (timeString) => {
+        if (!timeString) return '';
+        // Si ya tiene formato HH:MM, devolverlo
+        if (timeString.includes(':')) return timeString;
+
+        // Si es un objeto Date
+        if (timeString instanceof Date) {
+            return timeString.toTimeString().slice(0, 5);
+        }
+
+        return timeString;
+    };
 
     const formatDateLocal = (date) => {
         const year = date.getFullYear()
@@ -305,6 +430,26 @@ export default function ServicesPage() {
                                     <Search className="h-4 w-4" />
                                     Buscar
                                 </Button>
+                                {/* {filters.serviceNumber && services.length > 0 && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="gap-2"
+                                                    onClick={handleOpenEditDialog}
+                                                >
+                                                    <Edit className="h-4 w-4" />
+                                                    Editar Servicios
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Editar origen, destino y hora de servicios existentes</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )} */}
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -591,6 +736,219 @@ export default function ServicesPage() {
                     )}
                 </CardContent>
             </Card>
+            
+            {/* <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Edit className="h-5 w-5" />
+                            Editar Servicios
+                        </DialogTitle>
+                        <DialogDescription>
+                            Actualizará los servicios #{filters.serviceNumber} según los campos modificados.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <Card>
+                            <CardHeader className="py-3">
+                                <CardTitle className="text-sm">Alcance de la actualización</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3 pt-0">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="updateAll"
+                                        checked={editForm.updateAll}
+                                        onChange={(e) => setEditForm({
+                                            ...editForm,
+                                            updateAll: e.target.checked,
+                                            fromDate: e.target.checked ? '' : editForm.fromDate
+                                        })}
+                                        className="h-4 w-4 rounded border-gray-300"
+                                    />
+                                    <Label htmlFor="updateAll" className="text-sm font-normal cursor-pointer">
+                                        Actualizar TODOS los servicios (sin límite de fecha)
+                                    </Label>
+                                </div>
+
+                                {!editForm.updateAll && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="editFromDate">Desde fecha</Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-between"
+                                                    id="editFromDate"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                        {editForm.fromDate
+                                                            ? editForm.fromDate
+                                                            : "Seleccionar fecha"}
+                                                    </div>
+                                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <CalendarComponent
+                                                    mode="single"
+                                                    locale={es}
+                                                    selected={
+                                                        editForm.fromDate
+                                                            ? new Date(`${editForm.fromDate}T00:00:00`)
+                                                            : undefined
+                                                    }
+                                                    onSelect={(date) => {
+                                                        if (!date) return
+                                                        const formatted = formatDateLocal(date)
+                                                        setEditForm({
+                                                            ...editForm,
+                                                            fromDate: formatted
+                                                        })
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="py-3">
+                                <CardTitle className="text-sm">Campos a actualizar</CardTitle>
+                                <CardDescription className="text-xs">
+                                    Complete solo los campos que desea modificar
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4 pt-0">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="origin" className="flex items-center gap-1">
+                                            <MapPin className="h-3 w-3" />
+                                            Origen
+                                        </Label>
+                                        <Input
+                                            id="origin"
+                                            value={editForm.origin}
+                                            onChange={(e) => setEditForm({ ...editForm, origin: e.target.value })}
+                                            placeholder="Nuevo origen"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="destination" className="flex items-center gap-1">
+                                            <MapPin className="h-3 w-3" />
+                                            Destino
+                                        </Label>
+                                        <Input
+                                            id="destination"
+                                            value={editForm.destination}
+                                            onChange={(e) => setEditForm({ ...editForm, destination: e.target.value })}
+                                            placeholder="Nuevo destino"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="time" className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        Hora
+                                    </Label>
+                                    <Input
+                                        id="time"
+                                        value={editForm.time}
+                                        onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+                                        placeholder="HH:MM (ej: 14:30)"
+                                        type="time"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="serviceName">Nombre personalizado (opcional)</Label>
+                                    <Input
+                                        id="serviceName"
+                                        value={editForm.serviceName}
+                                        onChange={(e) => setEditForm({ ...editForm, serviceName: e.target.value })}
+                                        placeholder="Dejar vacío para generar automáticamente"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Si se deja vacío, se generará automáticamente con el formato: #{filters.serviceNumber} [Origen] → [Destino] [Hora]
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <div className="rounded-md bg-blue-50 p-4 text-sm text-blue-800">
+                            <div className="font-medium mb-2">Resumen de cambios:</div>
+                            <ul className="list-disc list-inside space-y-1">
+                                <li>Número de servicio: <strong>#{filters.serviceNumber}</strong></li>
+                                {editForm.origin && <li>Nuevo origen: <strong>{editForm.origin}</strong></li>}
+                                {editForm.destination && <li>Nuevo destino: <strong>{editForm.destination}</strong></li>}
+                                {editForm.time && <li>Nueva hora: <strong>{editForm.time}</strong></li>}
+                                {editForm.serviceName && <li>Nombre personalizado: <strong>{editForm.serviceName}</strong></li>}
+                                <li>
+                                    {editForm.updateAll
+                                        ? "Se actualizarán TODOS los servicios encontrados"
+                                        : `Se actualizarán servicios desde: ${editForm.fromDate || 'No especificada'}`}
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+                            <div className="flex items-start gap-2">
+                                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <div className="font-medium">Advertencia</div>
+                                    <p className="mt-1">
+                                        Esta acción modificará permanentemente los servicios.
+                                        Los cambios afectarán a todos los servicios que cumplan con el criterio de fecha.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setEditDialogOpen(false);
+                                setEditForm({
+                                    fromDate: '',
+                                    updateAll: false,
+                                    origin: '',
+                                    destination: '',
+                                    time: '',
+                                    serviceName: ''
+                                });
+                            }}
+                            disabled={editLoading}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleUpdateServices}
+                            disabled={editLoading || (!editForm.updateAll && !editForm.fromDate)}
+                        >
+                            {editLoading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Actualizando...
+                                </>
+                            ) : (
+                                <>
+                                    <Edit className="h-4 w-4" />
+                                    Aplicar Cambios
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog> */}
         </div>
     )
 }

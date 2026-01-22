@@ -158,10 +158,142 @@ export default function TemplatesPage() {
             let createdId;
 
             if (editingTemplate) {
-                await TemplateService.updateTemplate(editingTemplate._id, data);
+                const result = await TemplateService.updateTemplate(editingTemplate._id, data);
+                createdId = editingTemplate._id;
                 showNotification("success", "Template actualizada correctamente");
                 setShowModal(false);
-                loadTemplates();
+
+                setTimeout(async () => {
+                    const updateResult = await Swal.fire({
+                        title: "¿Actualizar servicios existentes?",
+                        html: `
+                            <div class="text-left">
+                                <p>¿Deseas actualizar los servicios generados a partir de hoy en base a esta plantilla?</p>
+                                <div class="mt-4 p-3 bg-blue-50 rounded-md text-sm">
+                                    <p><strong>Cambios realizados:</strong></p>
+                                    <ul class="mt-2 space-y-1">
+                                        ${data.origin && data.origin !== editingTemplate.origin ? `<li>• Origen: ${editingTemplate.origin} → ${data.origin}</li>` : ''}
+                                        ${data.destination && data.destination !== editingTemplate.destination ? `<li>• Destino: ${editingTemplate.destination} → ${data.destination}</li>` : ''}
+                                        ${data.time && data.time !== editingTemplate.time ? `<li>• Hora: ${editingTemplate.time} → ${data.time}</li>` : ''}
+                                        ${!data.origin && !data.destination && !data.time ? `<li>• Sin cambios en ruta/hora</li>` : ''}
+                                    </ul>
+                                </div>
+                            </div>
+                        `,
+                        icon: "question",
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, actualizar servicios",
+                        cancelButtonText: "No, mantener como están",
+                        confirmButtonColor: "#3085d6",
+                        cancelButtonColor: "#d33",
+                        reverseButtons: true,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    });
+
+                    if (updateResult.isConfirmed) {
+                        try {
+                            // Preparar parámetros para la API de actualización
+                            const updateParams = {
+                                fromDate: new Date().toISOString().split("T")[0], // Hoy
+                            };
+
+                            // Solo incluir los campos que cambiaron
+                            if (data.origin && data.origin !== editingTemplate.origin) {
+                                updateParams.origin = data.origin;
+                            }
+                            if (data.destination && data.destination !== editingTemplate.destination) {
+                                updateParams.destination = data.destination;
+                            }
+                            if (data.time && data.time !== editingTemplate.time) {
+                                updateParams.time = data.time;
+                            }
+
+                            if (updateParams.origin || updateParams.destination || updateParams.time) {
+                                const newOrigin = updateParams.origin || editingTemplate.origin;
+                                const newDestination = updateParams.destination || editingTemplate.destination;
+                                const newTime = updateParams.time || editingTemplate.time;
+
+                                updateParams.serviceName = `#${editingTemplate.serviceNumber} ${newOrigin} → ${newDestination} ${newTime}`;
+                            }
+
+                            // Si hay al menos un campo para actualizar
+                            if (Object.keys(updateParams).length > 1) { // updateAll más al menos un campo
+                                const updateSwal = Swal.fire({
+                                    title: "Actualizando servicios...",
+                                    html: "Por favor espera mientras se actualizan los servicios existentes",
+                                    allowOutsideClick: false,
+                                    didOpen: () => {
+                                        Swal.showLoading();
+                                    }
+                                });
+
+                                try {
+                                    const updateResult = await ServicesService.updateGeneratedServices(
+                                        editingTemplate.serviceNumber,
+                                        updateParams
+                                    );
+
+                                    await updateSwal.close();
+
+                                    if (updateResult.success) {
+                                        Swal.fire({
+                                            title: "¡Servicios actualizados!",
+                                            html: `
+                                                <div class="text-left">
+                                                    <p>Se actualizaron ${updateResult.updatedCount || 0} servicios</p>
+                                                    ${updateResult.sampleUpdated && updateResult.sampleUpdated.length > 0 ? `
+                                                        <div class="mt-3 p-3 bg-green-50 rounded-md text-sm">
+                                                            <p class="font-medium">Ejemplos actualizados:</p>
+                                                            <ul class="mt-2 space-y-2">
+                                                                ${updateResult.sampleUpdated.map(service => `
+                                                                    <li class="border-l-2 border-green-500 pl-2">
+                                                                        <div class="font-medium">${service.date}</div>
+                                                                        <div class="text-gray-600 text-xs line-through">${service.oldServiceName}</div>
+                                                                        <div class="text-green-600 text-sm">→ ${service.newServiceName}</div>
+                                                                    </li>
+                                                                `).join('')}
+                                                            </ul>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                            `,
+                                            icon: "success",
+                                            confirmButtonText: "Entendido"
+                                        });
+
+                                        showNotification("success", `Servicios actualizados: ${updateResult.updatedCount} servicios modificados`);
+                                    } else {
+                                        throw new Error(updateResult.error || "Error al actualizar servicios");
+                                    }
+
+                                } catch (updateError) {
+                                    await updateSwal.close();
+                                    throw updateError;
+                                }
+                            } else {
+                                // No hay campos para actualizar
+                                Swal.fire({
+                                    title: "Sin cambios",
+                                    text: "No se detectaron cambios en origen, destino o hora que requieran actualización de servicios.",
+                                    icon: "info",
+                                    confirmButtonText: "Entendido"
+                                });
+                            }
+
+                        } catch (err) {
+                            console.error("Error actualizando servicios:", err);
+                            Swal.fire({
+                                title: "Error al actualizar servicios",
+                                text: err.message || "Ocurrió un error al intentar actualizar los servicios",
+                                icon: "error",
+                                confirmButtonText: "Entendido"
+                            });
+                        }
+                    }
+
+                    loadTemplates();
+                }, 1000);
             } else {
                 const res = await TemplateService.createTemplate(data);
                 createdId = res._id || res.id;
@@ -255,164 +387,164 @@ export default function TemplatesPage() {
 
         return (
             <div className="space-y-4">
-                    <CardHeader className="pb-3">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <Calendar className={`h-5 w-5`} />
-                                <CardTitle>
-                                    {dayNames[day]}
-                                    <Badge variant="outline" className="ml-2 bg-white">
-                                        {filteredTemplates.length} de {filteredTemplates.length} plantillas
-                                    </Badge>
-                                </CardTitle>
-                            </div>
-
-                            {filteredTemplates.length === 0 && searchTerm && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setSearchTerm("")}
-                                    className="gap-2"
-                                >
-                                    <X className="h-4 w-4" />
-                                    Limpiar filtro
-                                </Button>
-                            )}
+                <CardHeader className="pb-3">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <Calendar className={`h-5 w-5`} />
+                            <CardTitle>
+                                {dayNames[day]}
+                                <Badge variant="outline" className="ml-2 bg-white">
+                                    {filteredTemplates.length} de {filteredTemplates.length} plantillas
+                                </Badge>
+                            </CardTitle>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="relative h-[500px] overflow-auto rounded-md border">
-                            <Table className="min-w-[1100px]">
-                                <TableHeader>
-                                    <TableRow className="bg-gray-50 hover:bg-gray-50">
-                                        <TableHead className="w-[100px]">Código</TableHead>
-                                        <TableHead>Nombre</TableHead>
-                                        <TableHead>Origen</TableHead>
-                                        <TableHead>Destino</TableHead>
-                                        <TableHead>Hora</TableHead>
-                                        <TableHead>Empresa</TableHead>
-                                        <TableHead>Estado</TableHead>
-                                        <TableHead className="text-right">Acciones</TableHead>
+
+                        {filteredTemplates.length === 0 && searchTerm && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSearchTerm("")}
+                                className="gap-2"
+                            >
+                                <X className="h-4 w-4" />
+                                Limpiar filtro
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="relative h-[500px] overflow-auto rounded-md border">
+                        <Table className="min-w-[1100px]">
+                            <TableHeader>
+                                <TableRow className="bg-gray-50 hover:bg-gray-50">
+                                    <TableHead className="w-[100px]">Código</TableHead>
+                                    <TableHead>Nombre</TableHead>
+                                    <TableHead>Origen</TableHead>
+                                    <TableHead>Destino</TableHead>
+                                    <TableHead>Hora</TableHead>
+                                    <TableHead>Empresa</TableHead>
+                                    <TableHead>Estado</TableHead>
+                                    <TableHead className="text-right">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredTemplates.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center py-8">
+                                            <div className="flex flex-col items-center justify-center space-y-2">
+                                                <Search className="h-12 w-12 text-gray-300" />
+                                                <p className="text-gray-500">No se encontraron plantillas que coincidan con "{searchTerm}"</p>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setSearchTerm("")}
+                                                    className="mt-2"
+                                                >
+                                                    Limpiar búsqueda
+                                                </Button>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredTemplates.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={8} className="text-center py-8">
-                                                <div className="flex flex-col items-center justify-center space-y-2">
-                                                    <Search className="h-12 w-12 text-gray-300" />
-                                                    <p className="text-gray-500">No se encontraron plantillas que coincidan con "{searchTerm}"</p>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => setSearchTerm("")}
-                                                        className="mt-2"
-                                                    >
-                                                        Limpiar búsqueda
-                                                    </Button>
+                                ) : (
+                                    filteredTemplates.map((template) => (
+                                        <TableRow
+                                            key={template._id}
+                                            className={!template.active ? "bg-gray-100 hover:bg-gray-200" : ""}
+                                        >
+                                            <TableCell className="whitespace-nowrap font-medium">
+                                                <Badge variant="outline" className="bg-white">
+                                                    #{template.serviceNumber}
+                                                </Badge>
+                                            </TableCell>
+
+                                            <TableCell className="max-w-[260px] whitespace-normal break-words">
+                                                <div className="font-medium">{template.serviceName}</div>
+                                            </TableCell>
+
+                                            <TableCell className="max-w-[220px] whitespace-normal break-words">
+                                                <div className="flex items-start gap-2">
+                                                    <MapPin className="h-4 w-4 text-green-600 mt-1 shrink-0" />
+                                                    <span>{template.origin}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="max-w-[220px] whitespace-normal break-words">
+                                                {template.destination}
+                                            </TableCell>
+
+                                            <TableCell className="whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-blue-600" />
+                                                    <span>{template.time}</span>
+                                                </div>
+                                            </TableCell>
+
+                                            <TableCell className="whitespace-nowrap">
+                                                {template.company || (
+                                                    <span className="text-gray-400">-</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                <Badge
+                                                    variant={template.active ? "default" : "secondary"}
+                                                    className={template.active ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"}
+                                                >
+                                                    {template.active ? "Activo" : "Inactivo"}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleEditTemplate(template)}
+                                                                >
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Editar plantilla</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleToggle(template)}
+                                                                    className={
+                                                                        template.active
+                                                                            ? "text-red-600 hover:text-red-700 hover:bg-red-100"
+                                                                            : "text-green-600 hover:text-green-700 hover:bg-green-100"
+                                                                    }
+                                                                >
+                                                                    {template.active ? (
+                                                                        <XIcon className="h-4 w-4" />
+                                                                    ) : (
+                                                                        <Check className="h-4 w-4" />
+                                                                    )}
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>{template.active ? "Desactivar" : "Activar"}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
-                                    ) : (
-                                        filteredTemplates.map((template) => (
-                                            <TableRow
-                                                key={template._id}
-                                                className={!template.active ? "bg-gray-100 hover:bg-gray-200" : ""}
-                                            >
-                                                <TableCell className="whitespace-nowrap font-medium">
-                                                    <Badge variant="outline" className="bg-white">
-                                                        #{template.serviceNumber}
-                                                    </Badge>
-                                                </TableCell>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
 
-                                                <TableCell className="max-w-[260px] whitespace-normal break-words">
-                                                    <div className="font-medium">{template.serviceName}</div>
-                                                </TableCell>
-
-                                                <TableCell className="max-w-[220px] whitespace-normal break-words">
-                                                    <div className="flex items-start gap-2">
-                                                        <MapPin className="h-4 w-4 text-green-600 mt-1 shrink-0" />
-                                                        <span>{template.origin}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="max-w-[220px] whitespace-normal break-words">
-                                                    {template.destination}
-                                                </TableCell>
-
-                                                <TableCell className="whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="h-4 w-4 text-blue-600" />
-                                                        <span>{template.time}</span>
-                                                    </div>
-                                                </TableCell>
-
-                                                <TableCell className="whitespace-nowrap">
-                                                    {template.company || (
-                                                        <span className="text-gray-400">-</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap">
-                                                    <Badge
-                                                        variant={template.active ? "default" : "secondary"}
-                                                        className={template.active ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"}
-                                                    >
-                                                        {template.active ? "Activo" : "Inactivo"}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => handleEditTemplate(template)}
-                                                                    >
-                                                                        <Edit className="h-4 w-4" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>Editar plantilla</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        onClick={() => handleToggle(template)}
-                                                                        className={
-                                                                            template.active
-                                                                                ? "text-red-600 hover:text-red-700 hover:bg-red-100"
-                                                                                : "text-green-600 hover:text-green-700 hover:bg-green-100"
-                                                                        }
-                                                                    >
-                                                                        {template.active ? (
-                                                                            <XIcon className="h-4 w-4" />
-                                                                        ) : (
-                                                                            <Check className="h-4 w-4" />
-                                                                        )}
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>{template.active ? "Desactivar" : "Activar"}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                    </CardContent>
+                </CardContent>
             </div>
         );
     };
