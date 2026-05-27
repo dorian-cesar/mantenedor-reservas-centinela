@@ -120,6 +120,33 @@ class ServicesService {
         }
     }
 
+    static async deleteGeneratedServicesInternal(serviceNumber, fromDate) {
+        try {
+            const res = await fetch(`/api/delete-services?id=${serviceNumber}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${SessionHelper.getToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    fromDate: fromDate,
+                })
+            });
+
+            if (!res.ok) {
+                const txt = await res.text().catch(() => null);
+                const errObj = JSON.parse(txt);
+                throw new Error(errObj.error || 'Error al eliminar servicios');
+            }
+
+            const json = await res.json();
+            return json;
+        } catch (err) {
+            console.error('deleteGeneratedServicesInternal error:', err);
+            throw err;
+        }
+    }
+
     static async deleteServiceByID(serviceId, force = false) {
         const query = force ? '?force=true' : '';
 
